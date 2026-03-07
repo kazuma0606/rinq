@@ -62,73 +62,96 @@
   - **Property 2: 複数フィルタの結合**
   - **Validates: Requirements 1.3**
 
-- [ ] 4. 射影機能の実装
+- [x] 4. 射影機能の実装
+
+
+
+
+
+
+
+
+
+
+
+
   - `select()`メソッドの実装
   - `Projected<U>`状態の実装
   - 型変換のサポート
   - _Requirements: 2.1, 2.3, 2.4_
 
-- [ ] 4.1 プロパティテスト: select()の正確性
+- [x] 4.1 プロパティテスト: select()の正確性
+
+
+
+
   - **Property 4: 射影の正確性**
   - **Validates: Requirements 2.1**
 
-- [ ] 4.2 プロパティテスト: フィルタと射影の順序
+- [x] 4.2 プロパティテスト: フィルタと射影の順序
+
+
   - **Property 5: フィルタと射影の順序**
   - **Validates: Requirements 2.2**
 
-- [ ] 4.3 単体テスト: 型変換のサポート
+- [x] 4.3 単体テスト: 型変換のサポート
+
+
   - 異なる型への射影
   - _Requirements: 2.3, 2.4_
 
-- [ ] 5. ソート機能の実装
+- [x] 5. ソート機能の実装
+
+
+
   - `order_by()`メソッドの実装
   - `order_by_descending()`メソッドの実装
   - `then_by()`メソッドの実装
   - `Sorted`状態の実装
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 5.1 プロパティテスト: 昇順ソートの正確性
+- [x] 5.1 プロパティテスト: 昇順ソートの正確性
   - **Property 7: 昇順ソートの正確性**
   - **Validates: Requirements 3.1**
 
-- [ ] 5.2 プロパティテスト: 降順ソートの正確性
+- [x] 5.2 プロパティテスト: 降順ソートの正確性
   - **Property 8: 降順ソートの正確性**
   - **Validates: Requirements 3.2**
 
-- [ ] 5.3 プロパティテスト: 複数キーソートの正確性
+- [x] 5.3 プロパティテスト: 複数キーソートの正確性
   - **Property 9: 複数キーソートの正確性**
   - **Validates: Requirements 3.3, 3.4**
 
-- [ ] 5.4 プロパティテスト: 安定ソートの保証
+- [x] 5.4 プロパティテスト: 安定ソートの保証
   - **Property 10: 安定ソートの保証**
   - **Validates: Requirements 3.5**
 
-- [ ] 6. ページネーション機能の実装
+- [x] 6. ページネーション機能の実装
   - `take()`メソッドの実装
   - `skip()`メソッドの実装
   - 遅延評価の実装
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 6.1 プロパティテスト: take()の正確性
+- [x] 6.1 プロパティテスト: take()の正確性
   - **Property 11: take()の正確性**
   - **Validates: Requirements 4.1**
 
-- [ ] 6.2 プロパティテスト: skip()の正確性
+- [x] 6.2 プロパティテスト: skip()の正確性
   - **Property 12: skip()の正確性**
   - **Validates: Requirements 4.2**
 
-- [ ] 6.3 プロパティテスト: ページネーションの正確性
+- [x] 6.3 プロパティテスト: ページネーションの正確性
   - **Property 13: ページネーションの正確性**
   - **Validates: Requirements 4.3**
 
-- [ ] 6.4 単体テスト: エッジケース（nがサイズを超える）
+- [x] 6.4 単体テスト: エッジケース（nがサイズを超える）
   - _Requirements: 4.4_
 
-- [ ] 6.5 プロパティテスト: 遅延評価の保証
+- [x] 6.5 プロパティテスト: 遅延評価の保証
   - **Property 6: 遅延評価の保証**
   - **Validates: Requirements 2.5, 4.5**
 
-- [ ] 7. 集約機能の実装
+- [x] 7. 集約機能の実装
   - `count()`メソッドの実装
   - `first()`メソッドの実装
   - `last()`メソッドの実装
@@ -136,32 +159,32 @@
   - `all()`メソッドの実装
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 7.1 プロパティテスト: count()の正確性
+- [x] 7.1 プロパティテスト: count()の正確性
   - **Property 14: count()の正確性**
   - **Validates: Requirements 5.1**
 
-- [ ] 7.2 プロパティテスト: first()の正確性
+- [x] 7.2 プロパティテスト: first()の正確性
   - **Property 15: first()の正確性**
   - **Validates: Requirements 5.2**
 
-- [ ] 7.3 プロパティテスト: last()の正確性
+- [x] 7.3 プロパティテスト: last()の正確性
   - **Property 16: last()の正確性**
   - **Validates: Requirements 5.3**
 
-- [ ] 7.4 プロパティテスト: any()の正確性
+- [x] 7.4 プロパティテスト: any()の正確性
   - **Property 17: any()の正確性**
   - **Validates: Requirements 5.4**
 
-- [ ] 7.5 プロパティテスト: all()の正確性
+- [x] 7.5 プロパティテスト: all()の正確性
   - **Property 18: all()の正確性**
   - **Validates: Requirements 5.5**
 
-- [ ] 8. 終端操作の実装
+- [x] 8. 終端操作の実装
   - `collect()`メソッドの実装
   - すべての状態での終端操作サポート
   - _Requirements: 1.4_
 
-- [ ] 8.1 単体テスト: collect()の基本動作
+- [x] 8.1 単体テスト: collect()の基本動作
   - Vec、HashSet、その他のコレクションへの変換
   - _Requirements: 1.4_
 

@@ -7,7 +7,7 @@ use crate::infrastructure::config::app_config::DiscordConfig;
 use crate::presentation::controller::user_controller::UserController;
 use crate::presentation::router::auth_router::create_auth_routes;
 use crate::presentation::router::fortune_router::create_fortune_routes;
-use crate::presentation::router::grpc_router::create_grpc_routes;
+// use crate::presentation::router::grpc_router::create_grpc_routes;
 use crate::presentation::router::user_router::create_user_routes;
 use crate::shared::middleware::cors_middleware::build_cors_layer;
 use crate::shared::middleware::discord_middleware::{
@@ -48,7 +48,7 @@ pub fn create_app_router(
         .nest("/api", create_user_routes(app_state))
         .nest("/api", create_auth_routes())
         .nest("/api", create_fortune_routes())
-        .nest("/api", create_grpc_routes())
+        // .nest("/api", create_grpc_routes())  // Temporarily disabled - requires protoc
         .layer(build_cors_layer())
         .layer(middleware::from_fn(watch_middleware::watch_middleware))
         .layer(middleware::from_fn_with_state(

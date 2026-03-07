@@ -214,10 +214,10 @@ pub mod infrastructure {
         pub mod run;
     }
 
-    pub mod grpc {
-        pub mod hello_service;
-        pub mod server;
-    }
+    // pub mod grpc {
+    //     pub mod hello_service;
+    //     pub mod server;
+    // }
 
     pub mod utils {
         pub mod cors_settings;
@@ -264,7 +264,7 @@ pub mod presentation {
         pub mod app_router;
         pub mod auth_router;
         pub mod fortune_router;
-        pub mod grpc_router;
+        // pub mod grpc_router;  // Temporarily disabled - requires protoc
         pub mod metrics_router;
         pub mod user_router;
 

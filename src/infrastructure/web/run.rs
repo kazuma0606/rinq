@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use crate::infrastructure::config::app_config::AppConfig;
 use crate::infrastructure::di::container::DIContainer;
-use crate::infrastructure::grpc::server::create_grpc_router;
+// use crate::infrastructure::grpc::server::create_grpc_router;
 use crate::infrastructure::utils::graceful_shutdown::shutdown_signal;
 use crate::presentation::router::app_router::create_app_router;
 
@@ -29,10 +29,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // 3. ルーティング設定
     let http_router = create_app_router(Arc::new(app_state), discord_config);
-    let grpc_router = create_grpc_router();
+    // let grpc_router = create_grpc_router();  // Temporarily disabled - requires protoc
 
     // HTTPとgRPCルーターを統合
-    let app = http_router.merge(grpc_router);
+    // let app = http_router.merge(grpc_router);
+    let app = http_router;
 
     // 4. サーバー起動
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
@@ -47,7 +48,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("  - PUT  /api/users/:id - ユーザー更新");
     println!("  - DELETE /api/users/:id - ユーザー削除");
     println!("  - GET  /api/fortune - ランダム癒し系おみくじ");
-    println!("  - POST /grpc/hello - gRPC Hello Service (Protocol Buffers)");
+    // println!("  - POST /grpc/hello - gRPC Hello Service (Protocol Buffers)");  // Temporarily disabled
     println!("  - Discord通知: エラー発生時に自動通知");
 
     axum::serve(listener, app)
