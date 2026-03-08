@@ -2,11 +2,11 @@ fn main() {
     // protoファイルからRustコードを生成
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let hello_rs_path = std::path::Path::new(&out_dir).join("hello.rs");
-    
+
     // Try to compile protos, if it fails create a stub
     if let Err(e) = prost_build::compile_protos(&["proto/hello.proto"], &["proto"]) {
         println!("cargo:warning=Skipping protobuf compilation: {}", e);
-        
+
         // Create a stub hello.rs file
         std::fs::write(
             &hello_rs_path,

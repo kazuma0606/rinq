@@ -1,7 +1,7 @@
 // benches/rinq_benchmarks.rs
 // Performance benchmarks for RINQ
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use rusted_ca::domain::rinq::QueryBuilder;
 
 // **Task 14.1: Benchmark for zero-cost abstraction verification**
@@ -63,9 +63,7 @@ fn benchmark_sort_rinq(c: &mut Criterion) {
     c.bench_function("sort_rinq", |b| {
         let data: Vec<i32> = (0..1000).rev().collect();
         b.iter(|| {
-            let result: Vec<_> = QueryBuilder::from(data.clone())
-                .order_by(|x| *x)
-                .collect();
+            let result: Vec<_> = QueryBuilder::from(data.clone()).order_by(|x| *x).collect();
             black_box(result);
         });
     });
@@ -230,9 +228,7 @@ fn benchmark_chained_filters(c: &mut Criterion) {
 
 fn benchmark_multi_sort(c: &mut Criterion) {
     c.bench_function("multi_sort", |b| {
-        let data: Vec<(i32, i32)> = (0..1000)
-            .map(|i| (i % 10, i))
-            .collect();
+        let data: Vec<(i32, i32)> = (0..1000).map(|i| (i % 10, i)).collect();
         b.iter(|| {
             let result: Vec<_> = QueryBuilder::from(data.clone())
                 .order_by(|x| x.0)

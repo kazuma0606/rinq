@@ -22,7 +22,7 @@ proptest! {
     ) {
         let original = data.clone();
         let _query = QueryBuilder::from(data.clone());
-        
+
         // Original data should be unchanged
         prop_assert_eq!(data, original);
     }
@@ -32,13 +32,13 @@ proptest! {
         data in prop::collection::vec(any::<i32>(), 0..100)
     ) {
         let original = data.clone();
-        
+
         // Execute a query
         let _result: Vec<_> = QueryBuilder::from(data.clone())
             .where_(|x| x % 2 == 0)
             .select(|x| x.saturating_mul(2))
             .collect();
-        
+
         // Original data should be unchanged
         prop_assert_eq!(data, original);
     }
@@ -48,7 +48,7 @@ proptest! {
         data in prop::collection::vec(any::<i32>(), 0..100)
     ) {
         let original = data.clone();
-        
+
         // Execute a complex query with multiple operations
         let _result: Vec<_> = QueryBuilder::from(data.clone())
             .where_(|x| x % 2 == 0)
@@ -56,7 +56,7 @@ proptest! {
             .take(5)
             .skip(1)
             .collect();
-        
+
         // Original data should be unchanged
         prop_assert_eq!(data, original);
     }

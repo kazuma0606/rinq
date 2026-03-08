@@ -50,9 +50,7 @@ impl DIContainer {
     /// AppStateを構築して返す
     ///
     /// これがDIコンテナのメインエントリーポイント
-    pub fn build_app_state(
-        &self,
-    ) -> Result<AppState, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn build_app_state(&self) -> Result<AppState, Box<dyn std::error::Error + Send + Sync>> {
         // 1. Infrastructure Layer - データベース接続
         let db_connection = SqliteConnection::new_in_memory()?;
 
@@ -101,7 +99,10 @@ impl DIContainer {
 
         // 7. Application Layer - Authentication UseCase
         let login_usecase: Arc<dyn LoginUsecaseInterface> =
-            Arc::new(LoginUseCase::<_, SimplePasswordHasher>::new(query_repository, password_hasher));
+            Arc::new(LoginUseCase::<_, SimplePasswordHasher>::new(
+                query_repository,
+                password_hasher,
+            ));
 
         // 8. AppState構築
         let app_state = AppState::new(

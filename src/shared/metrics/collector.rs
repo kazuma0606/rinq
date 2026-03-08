@@ -2,9 +2,9 @@
 // メトリクス収集器
 // 2025/7/8
 
-use std::sync::Arc;
 use parking_lot::RwLock;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Metrics collector for tracking application metrics
 #[derive(Clone)]

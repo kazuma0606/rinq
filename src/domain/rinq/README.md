@@ -197,7 +197,7 @@ let result: Vec<_> = MetricsQueryBuilder::new(
 assert_eq!(metrics.get("query_my_query"), Some(1));
 ```
 
-## API Reference
+## API Reference - v0.1
 
 ### QueryBuilder Methods
 
@@ -233,6 +233,223 @@ assert_eq!(metrics.get("query_my_query"), Some(1));
 #### デバッグ
 
 - `inspect(f)` - 要素を観察（非破壊的）
+
+---
+
+## v0.2 Features 🎉
+
+RINQ v0.2では、データ分析と変換のための強力な新機能が追加されました。
+
+### 数値集約（Numeric Aggregations）
+
+データの統計的分析を簡単に実行できます。
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+
+let data = vec![1, 2, 3, 4, 5];
+
+// 合計を計算
+let total: i32 = QueryBuilder::from(data.clone()).sum();
+// 結果: 15
+
+// 平均を計算
+let average = QueryBuilder::from(data.clone()).average().unwrap();
+// 結果: 3.0
+
+// 最小値と最大値
+let min = QueryBuilder::from(data.clone()).min().unwrap();
+let max = QueryBuilder::from(data.clone()).max().unwrap();
+// 結果: min=1, max=5
+```
+
+キーセレクタを使用して、構造体のフィールドで最小/最大を検索：
+
+```rust
+#[derive(Debug, Clone)]
+struct User { name: String, age: u32 }
+
+let users = vec![
+    User { name: "Alice".into(), age: 30 },
+    User { name: "Bob".into(), age: 25 },
+    User { name: "Charlie".into(), age: 35 },
+];
+
+// 最年少のユーザー
+let youngest = QueryBuilder::from(users.clone())
+    .min_by(|u| u.age)
+    .unwrap();
+// 結果: Bob (age 25)
+
+// 最年長のユーザー
+let oldest = QueryBuilder::from(users)
+    .max_by(|u| u.age)
+    .unwrap();
+// 結果: Charlie (age 35)
+```
+
+### グルーピング（Grouping Operations）
+
+データをカテゴリ別に分類し、グループごとに集約できます。
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+use std::collections::HashMap;
+
+let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// 偶数/奇数でグループ化
+let groups: HashMap<i32, Vec<i32>> = QueryBuilder::from(data.clone())
+    .group_by(|x| x % 2);
+// 結果: {0: [2,4,6,8,10], 1: [1,3,5,7,9]}
+
+// グループごとに集約を適用
+let group_sums: HashMap<i32, i32> = QueryBuilder::from(data)
+    .group_by_aggregate(
+        |x| x % 3,           // キー: 3で割った余り
+        |group| group.iter().sum(),  // 各グループの合計
+    );
+// 結果: {0: 18, 1: 22, 2: 14}
+```
+
+### 重複排除（Deduplication）
+
+データクリーニングワークフローに最適です。
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+
+let data = vec![1, 2, 2, 3, 3, 3, 4, 5, 5];
+
+// 重複を削除（最初の出現のみ保持）
+let unique: Vec<i32> = QueryBuilder::from(data)
+    .distinct()
+    .collect();
+// 結果: [1, 2, 3, 4, 5]
+
+// キーベースの重複排除
+#[derive(Debug, Clone, PartialEq)]
+struct Product { id: u32, name: String }
+
+let products = vec![
+    Product { id: 1, name: "Apple".into() },
+    Product { id: 1, name: "Apple v2".into() },  // 同じid
+    Product { id: 2, name: "Banana".into() },
+];
+
+let unique_products: Vec<Product> = QueryBuilder::from(products)
+    .distinct_by(|p| p.id)
+    .collect();
+// 結果: 2つのProduct（id: 1と2、最初の出現のみ）
+```
+
+### シーケンス変換（Sequence Transformations）
+
+バッチ処理や時系列分析に便利な変換操作です。
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+
+let data = vec![1, 2, 3, 4, 5];
+
+// 逆順に変換
+let reversed: Vec<i32> = QueryBuilder::from(data.clone())
+    .reverse()
+    .collect();
+// 結果: [5, 4, 3, 2, 1]
+
+// チャンクに分割（バッチ処理）
+let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3, 4, 5, 6, 7])
+    .chunk(3)
+    .collect();
+// 結果: [[1,2,3], [4,5,6], [7]]
+
+// スライディングウィンドウ（時系列分析）
+let windows: Vec<Vec<i32>> = QueryBuilder::from(data)
+    .window(3)
+    .collect();
+// 結果: [[1,2,3], [2,3,4], [3,4,5]]
+```
+
+### コレクション結合（Collection Combinations）
+
+データの相関、インデックス付け、分割に使用します。
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+
+let numbers = vec![1, 2, 3, 4, 5];
+let letters = vec!['a', 'b', 'c'];
+
+// 2つのコレクションをペアリング（最短の長さに合わせる）
+let paired: Vec<(i32, char)> = QueryBuilder::from(numbers.clone())
+    .zip(letters.into_iter())
+    .collect();
+// 結果: [(1,'a'), (2,'b'), (3,'c')]
+
+// インデックスを追加
+let indexed: Vec<(usize, i32)> = QueryBuilder::from(numbers.clone())
+    .enumerate()
+    .collect();
+// 結果: [(0,1), (1,2), (2,3), (3,4), (4,5)]
+
+// 条件で2つのコレクションに分割
+let (small, large) = QueryBuilder::from(numbers)
+    .partition(|x| *x < 3);
+// 結果: small=[1,2], large=[3,4,5]
+```
+
+### v0.1とv0.2の組み合わせ
+
+全ての操作は互いにシームレスに連携します：
+
+```rust
+use rusted_ca::domain::rinq::QueryBuilder;
+
+let data = vec![5, 2, 8, 1, 9, 5, 2, 3];
+
+// 複雑なクエリチェーン
+let result: i32 = QueryBuilder::from(data)
+    .where_(|x| *x > 2)        // v0.1: フィルタリング
+    .distinct()                 // v0.2: 重複排除
+    .order_by(|x| *x)          // v0.1: ソート
+    .take(3)                    // v0.1: 上位3件
+    .sum();                     // v0.2: 合計
+// 結果: 5 + 8 + 9 = 22
+```
+
+## API Reference - v0.2
+
+### 数値集約メソッド
+
+- `sum()` - 全要素の合計（`T: Sum`が必要）
+- `average()` - 全要素の平均（`T: ToPrimitive`が必要、`Option<f64>`を返す）
+- `min()` - 最小値（`T: Ord`が必要、`Option<T>`を返す）
+- `max()` - 最大値（`T: Ord`が必要、`Option<T>`を返す）
+- `min_by(key_selector)` - キー値が最小の要素を返す
+- `max_by(key_selector)` - キー値が最大の要素を返す
+
+### グルーピングメソッド
+
+- `group_by(key_selector)` - キー関数でグループ化、`HashMap<K, Vec<T>>`を返す（終端操作）
+- `group_by_aggregate(key_selector, aggregator)` - グループ化して各グループに集約関数を適用、`HashMap<K, R>`を返す（終端操作）
+
+### 重複排除メソッド
+
+- `distinct()` - 重複要素を削除（`T: Eq + Hash + Clone`が必要）
+- `distinct_by(key_selector)` - キーベースの重複排除（`K: Eq + Hash`が必要）
+
+### シーケンス変換メソッド
+
+- `reverse()` - 要素の順序を逆転
+- `chunk(size)` - `size`個ずつのチャンクに分割（`size`が0の場合panic）
+- `window(size)` - スライディングウィンドウを作成（`T: Clone`が必要、`size`が0の場合panic）
+
+### コレクション結合メソッド
+
+- `zip(other)` - 別のイテレータとペアリング（最短の長さに合わせる）
+- `enumerate()` - インデックスを追加（0から開始）
+- `partition(predicate)` - 条件で2つのコレクションに分割、`(Vec<T>, Vec<T>)`を返す（終端操作）
 
 ## Performance
 

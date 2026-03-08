@@ -1821,6 +1821,7 @@ dependencies = [
  "hyper 0.14.32",
  "hyper-util",
  "jsonwebtoken",
+ "num-traits",
  "parking_lot",
  "proptest",
  "prost",
