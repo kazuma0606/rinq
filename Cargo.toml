@@ -39,6 +39,11 @@ axum = "0.7"
 hyper = "0.14"
 tower = { version = "0.4", features = ["util"] }
 proptest = "1.0"
+criterion = "0.5"
 
 [features]
 testmode = []
+
+[[bench]]
+name = "rinq_benchmarks"
+harness = false

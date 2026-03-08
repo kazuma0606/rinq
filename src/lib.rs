@@ -103,11 +103,13 @@ pub mod domain {
 
     pub mod rinq {
         pub mod error;
+        pub mod metrics_query_builder;
         pub mod query_builder;
         pub mod state;
 
         pub use error::{RinqDomainError, RinqResult};
-        pub use query_builder::QueryBuilder;
+        pub use metrics_query_builder::MetricsQueryBuilder;
+        pub use query_builder::{Queryable, QueryBuilder};
         pub use state::{Filtered, Initial, Projected, Sorted};
     }
 }
