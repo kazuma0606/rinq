@@ -3,6 +3,7 @@
 
 use proptest::prelude::*;
 use rusted_ca::domain::rinq::QueryBuilder;
+use rusted_ca::domain::rinq::query_builder::Queryable;
 
 // **Feature: rinq-v0.1, Property 6.4: 型状態パターンによる有効なクエリ構築の強制**
 // **Validates: Requirements 6.4**
@@ -1107,6 +1108,505 @@ fn test_collect_with_complex_chain() {
         .take(2)
         .collect();
     assert_eq!(result, vec![8, 6]);
+}
+
+// **Feature: rinq-v0.1, Property 19: inspect()の非破壊性**
+// **Validates: Requirements 12.2**
+//
+// This property tests that inspect() allows observing elements without
+// modifying the query result.
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_inspect_does_not_modify_result(
+        data in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+        // Query without inspect
+        let without_inspect: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|x| *x % 2 == 0)
+            .collect();
+        
+        // Query with inspect
+        let with_inspect: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|x| *x % 2 == 0)
+            .inspect(|_| {
+                // Side effect for debugging
+            })
+            .collect();
+        
+        prop_assert_eq!(without_inspect, with_inspect);
+    }
+    
+    #[test]
+    fn prop_inspect_called_for_each_element(
+        data in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        
+        let counter = Arc::new(AtomicUsize::new(0));
+        let counter_clone = counter.clone();
+        
+        let result: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|x| *x % 2 == 0)
+            .inspect(move |_| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .collect();
+        
+        // inspect should be called for each element in the result
+        let expected_count = data.iter().filter(|x| **x % 2 == 0).count();
+        prop_assert_eq!(counter.load(Ordering::SeqCst), expected_count);
+        prop_assert_eq!(result.len(), expected_count);
+    }
+    
+    #[test]
+    fn prop_multiple_inspect_preserves_result(
+        data in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        
+        let counter1 = Arc::new(AtomicUsize::new(0));
+        let counter2 = Arc::new(AtomicUsize::new(0));
+        let c1 = counter1.clone();
+        let c2 = counter2.clone();
+        
+        let result: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|x| *x > 0)
+            .inspect(move |_| {
+                c1.fetch_add(1, Ordering::SeqCst);
+            })
+            .inspect(move |_| {
+                c2.fetch_add(1, Ordering::SeqCst);
+            })
+            .collect();
+        
+        // Both inspects should be called for each element
+        let expected_count = data.iter().filter(|x| **x > 0).count();
+        prop_assert_eq!(counter1.load(Ordering::SeqCst), expected_count);
+        prop_assert_eq!(counter2.load(Ordering::SeqCst), expected_count);
+        
+        // Compare with query without inspect
+        let expected: Vec<_> = QueryBuilder::from(data)
+            .where_(|x| *x > 0)
+            .collect();
+        prop_assert_eq!(result, expected);
+    }
+    
+    #[test]
+    fn prop_inspect_with_sort_and_pagination(
+        data in prop::collection::vec(any::<i32>(), 0..100),
+        n in 1usize..30
+    ) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::sync::Arc;
+        
+        let counter = Arc::new(AtomicUsize::new(0));
+        let counter_clone = counter.clone();
+        
+        let result: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|x| *x >= 0)
+            .order_by(|x| *x)
+            .inspect(move |_| {
+                counter_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .take(n)
+            .collect();
+        
+        // Result should be sorted
+        for i in 1..result.len() {
+            prop_assert!(result[i-1] <= result[i]);
+        }
+        
+        // Should have at most n elements
+        prop_assert!(result.len() <= n);
+        
+        // inspect should be called for elements that pass through
+        prop_assert_eq!(counter.load(Ordering::SeqCst), result.len());
+    }
+}
+
+// **Task 9.2: Unit tests for debug logging**
+// **Validates: Requirements 12.1**
+
+#[test]
+fn test_inspect_allows_debugging() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+    
+    let counter = Arc::new(AtomicUsize::new(0));
+    let counter_clone = counter.clone();
+    
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x % 2 == 0)
+        .inspect(move |_x| {
+            counter_clone.fetch_add(1, Ordering::SeqCst);
+        })
+        .collect();
+    
+    assert_eq!(result, vec![2, 4]);
+    assert_eq!(counter.load(Ordering::SeqCst), 2);
+}
+
+#[test]
+fn test_inspect_with_println() {
+    // This test verifies that inspect can be used with println! for debugging
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x > 2)
+        .inspect(|x| {
+            // In real usage, this would print debug info
+            let _ = format!("Processing: {}", x);
+        })
+        .collect();
+    
+    assert_eq!(result, vec![3, 4, 5]);
+}
+
+#[test]
+fn test_inspect_in_middle_of_chain() {
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x % 2 == 0)
+        .inspect(|_| {
+            // Debug point after filter
+        })
+        .order_by(|x| -*x)
+        .inspect(|_| {
+            // Debug point after sort
+        })
+        .take(3)
+        .collect();
+    
+    assert_eq!(result, vec![10, 8, 6]);
+}
+
+#[test]
+fn test_inspect_captures_values() {
+    use std::sync::Mutex;
+    use std::sync::Arc;
+    
+    let captured = Arc::new(Mutex::new(Vec::new()));
+    let captured_clone = captured.clone();
+    
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x > 2)
+        .inspect(move |x| {
+            captured_clone.lock().unwrap().push(*x);
+        })
+        .collect();
+    
+    assert_eq!(result, vec![3, 4, 5]);
+    assert_eq!(*captured.lock().unwrap(), vec![3, 4, 5]);
+}
+
+#[test]
+fn test_inspect_with_empty_collection() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    
+    let called = Arc::new(AtomicBool::new(false));
+    let called_clone = called.clone();
+    
+    let data: Vec<i32> = vec![];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x > 0)
+        .inspect(move |_| {
+            called_clone.store(true, Ordering::SeqCst);
+        })
+        .collect();
+    
+    assert_eq!(result, Vec::<i32>::new());
+    assert_eq!(called.load(Ordering::SeqCst), false);
+}
+
+// **Task 11.1: Unit tests for borrowed data support**
+// **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
+
+#[test]
+fn test_queryable_vec() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x > 2)
+        .collect();
+    
+    assert_eq!(result, vec![3, 4, 5]);
+}
+
+#[test]
+fn test_queryable_slice() {
+    let data = vec![1, 2, 3, 4, 5];
+    let slice = data.as_slice();
+    let result: Vec<_> = slice.into_query()
+        .where_(|x| *x > 2)
+        .collect();
+    
+    // Original data is unchanged
+    assert_eq!(data, vec![1, 2, 3, 4, 5]);
+    assert_eq!(result, vec![3, 4, 5]);
+}
+
+#[test]
+fn test_queryable_array() {
+    let data = [1, 2, 3, 4, 5];
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x % 2 == 0)
+        .collect();
+    
+    assert_eq!(result, vec![2, 4]);
+}
+
+#[test]
+fn test_queryable_hashset() {
+    use std::collections::HashSet;
+    
+    let mut data = HashSet::new();
+    data.insert(1);
+    data.insert(2);
+    data.insert(3);
+    data.insert(4);
+    data.insert(5);
+    
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x > 2)
+        .order_by(|x| *x)
+        .collect();
+    
+    assert_eq!(result, vec![3, 4, 5]);
+}
+
+#[test]
+fn test_queryable_btreeset() {
+    use std::collections::BTreeSet;
+    
+    let mut data = BTreeSet::new();
+    data.insert(5);
+    data.insert(2);
+    data.insert(8);
+    data.insert(1);
+    
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x < 7)
+        .collect();
+    
+    // BTreeSet maintains order, but we filter
+    assert_eq!(result.len(), 3);
+    assert!(result.contains(&5));
+    assert!(result.contains(&2));
+    assert!(result.contains(&1));
+}
+
+#[test]
+fn test_queryable_linkedlist() {
+    use std::collections::LinkedList;
+    
+    let mut data = LinkedList::new();
+    data.push_back(1);
+    data.push_back(2);
+    data.push_back(3);
+    data.push_back(4);
+    
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x % 2 == 0)
+        .collect();
+    
+    assert_eq!(result, vec![2, 4]);
+}
+
+#[test]
+fn test_queryable_vecdeque() {
+    use std::collections::VecDeque;
+    
+    let mut data = VecDeque::new();
+    data.push_back(1);
+    data.push_back(2);
+    data.push_back(3);
+    data.push_back(4);
+    
+    let result: Vec<_> = data.into_query()
+        .where_(|x| *x > 2)
+        .collect();
+    
+    assert_eq!(result, vec![3, 4]);
+}
+
+#[test]
+fn test_borrowed_data_no_ownership_transfer() {
+    let data = vec![1, 2, 3, 4, 5];
+    
+    // Query borrowed data
+    let result1: Vec<_> = data.as_slice().into_query()
+        .where_(|x| *x % 2 == 0)
+        .collect();
+    
+    // Original data is still available
+    assert_eq!(data, vec![1, 2, 3, 4, 5]);
+    assert_eq!(result1, vec![2, 4]);
+    
+    // Can query again
+    let result2: Vec<_> = data.as_slice().into_query()
+        .where_(|x| *x % 2 == 1)
+        .collect();
+    
+    assert_eq!(result2, vec![1, 3, 5]);
+}
+
+#[test]
+fn test_borrowed_data_with_closure_capturing() {
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let threshold = 5;
+    
+    // Predicate captures environment variable
+    let result: Vec<_> = data.as_slice().into_query()
+        .where_(move |x| *x > threshold)
+        .collect();
+    
+    assert_eq!(result, vec![6, 7, 8, 9, 10]);
+    // Original data is unchanged
+    assert_eq!(data.len(), 10);
+}
+
+#[test]
+fn test_borrowed_data_complex_query() {
+    let data = vec![10, 20, 30, 40, 50];
+    
+    let result: Vec<_> = data.as_slice().into_query()
+        .where_(|x| *x > 15)
+        .order_by(|x| -*x)
+        .take(3)
+        .select(|x| x / 10)
+        .collect();
+    
+    assert_eq!(result, vec![5, 4, 3]);
+    // Original data is unchanged
+    assert_eq!(data, vec![10, 20, 30, 40, 50]);
+}
+
+// **Task 12.1: Unit tests for error handling**
+// **Validates: Requirements 9.3, 9.4**
+
+#[test]
+fn test_error_handling_empty_collection_first() {
+    let data: Vec<i32> = vec![];
+    let result = QueryBuilder::from(data).first();
+    
+    // first() should return None for empty collection, not panic
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_error_handling_empty_collection_last() {
+    let data: Vec<i32> = vec![];
+    let result = QueryBuilder::from(data).last();
+    
+    // last() should return None for empty collection, not panic
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_error_handling_first_after_filter_no_match() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result = QueryBuilder::from(data)
+        .where_(|x| *x > 10)
+        .first();
+    
+    // Should return None when no elements match
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_error_handling_last_after_filter_no_match() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result = QueryBuilder::from(data)
+        .where_(|x| *x < 0)
+        .last();
+    
+    // Should return None when no elements match
+    assert_eq!(result, None);
+}
+
+#[test]
+fn test_error_handling_any_on_empty() {
+    let data: Vec<i32> = vec![];
+    let result = QueryBuilder::from(data)
+        .any(|_| true);
+    
+    // any() on empty collection should return false, not panic
+    assert_eq!(result, false);
+}
+
+#[test]
+fn test_error_handling_all_on_empty() {
+    let data: Vec<i32> = vec![];
+    let result = QueryBuilder::from(data)
+        .all(|_| false);
+    
+    // all() on empty collection should return true (vacuous truth)
+    assert_eq!(result, true);
+}
+
+#[test]
+fn test_rinq_domain_error_to_application_error() {
+    use rusted_ca::domain::rinq::RinqDomainError;
+    use rusted_ca::shared::error::application_error::ApplicationError;
+    
+    let rinq_error = RinqDomainError::InvalidQuery {
+        message: "Test error".to_string(),
+    };
+    
+    let app_error: ApplicationError = rinq_error.into();
+    
+    // Should convert to ApplicationError::Domain
+    assert!(matches!(app_error, ApplicationError::Domain(_)));
+    assert!(app_error.to_string().contains("Test error"));
+}
+
+#[test]
+fn test_rinq_error_messages() {
+    use rusted_ca::domain::rinq::RinqDomainError;
+    
+    let error1 = RinqDomainError::InvalidQuery {
+        message: "Invalid predicate".to_string(),
+    };
+    assert!(error1.to_string().contains("Invalid query construction"));
+    assert!(error1.to_string().contains("Invalid predicate"));
+    
+    let error2 = RinqDomainError::IteratorExhausted;
+    assert_eq!(error2.to_string(), "Iterator exhausted");
+    
+    let error3 = RinqDomainError::ExecutionError {
+        message: "Failed to execute".to_string(),
+    };
+    assert!(error3.to_string().contains("Query execution failed"));
+    
+    let error4 = RinqDomainError::TypeMismatch {
+        expected: "i32".to_string(),
+        actual: "String".to_string(),
+    };
+    assert!(error4.to_string().contains("Type mismatch"));
+    assert!(error4.to_string().contains("i32"));
+    assert!(error4.to_string().contains("String"));
+}
+
+#[test]
+fn test_error_handling_graceful_degradation() {
+    // Test that operations gracefully handle edge cases without panicking
+    let data = vec![1, 2, 3];
+    
+    // Multiple operations on empty result
+    let result = QueryBuilder::from(data)
+        .where_(|x| *x > 100)
+        .order_by(|x| *x)
+        .take(10)
+        .skip(5)
+        .first();
+    
+    assert_eq!(result, None);
 }
 
 // Additional compile-time validation tests

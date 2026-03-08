@@ -36,7 +36,7 @@ proptest! {
         // Execute a query
         let _result: Vec<_> = QueryBuilder::from(data.clone())
             .where_(|x| x % 2 == 0)
-            .select(|x| x * 2)
+            .select(|x| x.saturating_mul(2))
             .collect();
         
         // Original data should be unchanged

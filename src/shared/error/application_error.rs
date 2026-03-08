@@ -2,6 +2,7 @@
 
 use super::domain_error::DomainError;
 use super::infrastructure_error::InfrastructureError;
+use crate::domain::rinq::RinqDomainError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -43,3 +44,12 @@ pub enum ApplicationError {
 
 // Application Layer Result Type
 pub type ApplicationResult<T> = Result<T, ApplicationError>;
+
+// Conversion from RinqDomainError to ApplicationError
+impl From<RinqDomainError> for ApplicationError {
+    fn from(err: RinqDomainError) -> Self {
+        ApplicationError::Domain(DomainError::InvariantViolation {
+            message: err.to_string(),
+        })
+    }
+}

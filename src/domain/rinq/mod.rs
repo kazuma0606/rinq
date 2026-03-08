@@ -10,5 +10,5 @@ pub mod state;
 mod tests;
 
 pub use error::{RinqDomainError, RinqResult};
-pub use query_builder::QueryBuilder;
+pub use query_builder::{Queryable, QueryBuilder};
 pub use state::{Filtered, Initial, Projected, Sorted};
