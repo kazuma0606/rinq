@@ -133,7 +133,10 @@ impl UserQueryRepositoryInterface for SqliteUserQueryRepository {
         })
     }
 
-    async fn find_all(&self, pagination: PaginationParams) -> InfrastructureResult<PaginatedResult<User>> {
+    async fn find_all(
+        &self,
+        pagination: PaginationParams,
+    ) -> InfrastructureResult<PaginatedResult<User>> {
         let pagination = pagination.clone();
         let offset = (pagination.page - 1) * pagination.limit;
         let result: Result<PaginatedResult<User>, rusqlite::Error> = self

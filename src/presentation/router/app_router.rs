@@ -2,11 +2,11 @@
 // メインルーター設定
 // 2025/7/8
 
-use crate::state::app_state::AppState;
 use crate::infrastructure::config::app_config::DiscordConfig;
 use crate::presentation::controller::user_controller::UserController;
 use crate::presentation::router::auth_router::create_auth_routes;
 use crate::presentation::router::fortune_router::create_fortune_routes;
+use crate::state::app_state::AppState;
 // use crate::presentation::router::grpc_router::create_grpc_routes;
 use crate::presentation::router::user_router::create_user_routes;
 use crate::shared::middleware::cors_middleware::build_cors_layer;
@@ -25,11 +25,7 @@ use std::sync::Arc;
 /// 2. ヘルスチェックエンドポイント
 /// 3. APIプレフィックスの設定
 /// 4. ログ・メトリクス収集ミドルウェア
-pub fn create_app_router(
-    app_state: Arc<AppState>,
-    discord_config: Arc<DiscordConfig>,
-) -> Router
-{
+pub fn create_app_router(app_state: Arc<AppState>, discord_config: Arc<DiscordConfig>) -> Router {
     // 起動時Discord通知（必要な場合はコメント解除）
     // tokio::spawn(try_notify_startup(discord_config.clone()));
 

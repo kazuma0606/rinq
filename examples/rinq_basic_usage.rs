@@ -57,7 +57,7 @@ fn main() {
     let last = QueryBuilder::from(numbers.clone()).last();
     let any_gt_5 = QueryBuilder::from(numbers.clone()).any(|x| *x > 5);
     let all_positive = QueryBuilder::from(numbers.clone()).all(|x| *x > 0);
-    
+
     println!("Count: {}", count);
     println!("First: {:?}", first);
     println!("Last: {:?}", last);
@@ -67,23 +67,23 @@ fn main() {
     // Example 7: Type state pattern demonstration
     println!("Example 7: Type state pattern ensures compile-time safety");
     println!("The following operations are type-safe:");
-    
+
     // Valid: Initial -> Filtered
     let _q1 = QueryBuilder::from(numbers.clone()).where_(|x| x % 2 == 0);
     println!("✓ Initial -> Filtered (where_)");
-    
+
     // Valid: Filtered -> Sorted
     let _q2 = QueryBuilder::from(numbers.clone())
         .where_(|x| x % 2 == 0)
         .order_by(|x| *x);
     println!("✓ Filtered -> Sorted (order_by)");
-    
+
     // Valid: Filtered -> Projected
     let _q3 = QueryBuilder::from(numbers.clone())
         .where_(|x| x % 2 == 0)
         .select(|x| x * 2);
     println!("✓ Filtered -> Projected (select)");
-    
+
     println!("\nThe type system prevents invalid operations at compile time!");
     println!("For example, you cannot call order_by() on Initial state.");
     println!("This ensures query correctness before runtime.");

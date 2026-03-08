@@ -2,8 +2,8 @@
 // ユーザー関連ルーティング
 // 2025/7/8
 
-use crate::state::app_state::AppState;
 use crate::shared::middleware::auth_middleware::{AdminUser, AuthenticatedUser};
+use crate::state::app_state::AppState;
 use axum::middleware::from_fn;
 use axum::{
     Router,
@@ -17,8 +17,7 @@ use std::sync::Arc;
 /// 1. Axumルーターの設定
 /// 2. エンドポイントとControllerメソッドのマッピング
 /// 3. クロージャでのController呼び出し
-pub fn create_user_routes(app_state: Arc<AppState>) -> Router
-{
+pub fn create_user_routes(app_state: Arc<AppState>) -> Router {
     Router::new()
         .route(
             "/users",
@@ -26,9 +25,11 @@ pub fn create_user_routes(app_state: Arc<AppState>) -> Router
                 let app_state = app_state.clone();
                 move |_auth: AuthenticatedUser, _request: axum::Json<serde_json::Value>| {
                     let _app_state = app_state.clone();
-                    async move { 
+                    async move {
                         // TODO: Implement using app_state
-                        Ok::<_, axum::http::StatusCode>(axum::Json(serde_json::json!({"message": "Not implemented"})))
+                        Ok::<_, axum::http::StatusCode>(axum::Json(
+                            serde_json::json!({"message": "Not implemented"}),
+                        ))
                     }
                 }
             }),
@@ -39,9 +40,11 @@ pub fn create_user_routes(app_state: Arc<AppState>) -> Router
                 let app_state = app_state.clone();
                 move |_path: axum::extract::Path<String>| {
                     let _app_state = app_state.clone();
-                    async move { 
+                    async move {
                         // TODO: Implement using app_state
-                        Ok::<_, axum::http::StatusCode>(axum::Json(serde_json::json!({"message": "Not implemented"})))
+                        Ok::<_, axum::http::StatusCode>(axum::Json(
+                            serde_json::json!({"message": "Not implemented"}),
+                        ))
                     }
                 }
             }),
@@ -50,11 +53,15 @@ pub fn create_user_routes(app_state: Arc<AppState>) -> Router
             "/users/:id",
             put({
                 let app_state = app_state.clone();
-                move |_auth: AuthenticatedUser, _path: axum::extract::Path<String>, _body: axum::Json<serde_json::Value>| {
+                move |_auth: AuthenticatedUser,
+                      _path: axum::extract::Path<String>,
+                      _body: axum::Json<serde_json::Value>| {
                     let _app_state = app_state.clone();
-                    async move { 
+                    async move {
                         // TODO: Implement using app_state
-                        Ok::<_, axum::http::StatusCode>(axum::Json(serde_json::json!({"message": "Not implemented"})))
+                        Ok::<_, axum::http::StatusCode>(axum::Json(
+                            serde_json::json!({"message": "Not implemented"}),
+                        ))
                     }
                 }
             }),
@@ -65,9 +72,11 @@ pub fn create_user_routes(app_state: Arc<AppState>) -> Router
                 let app_state = app_state.clone();
                 move |_auth: AuthenticatedUser, _path: axum::extract::Path<String>| {
                     let _app_state = app_state.clone();
-                    async move { 
+                    async move {
                         // TODO: Implement using app_state
-                        Ok::<_, axum::http::StatusCode>(axum::Json(serde_json::json!({"message": "Not implemented"})))
+                        Ok::<_, axum::http::StatusCode>(axum::Json(
+                            serde_json::json!({"message": "Not implemented"}),
+                        ))
                     }
                 }
             }),
