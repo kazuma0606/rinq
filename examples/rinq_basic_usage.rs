@@ -1,7 +1,7 @@
 // examples/rinq_basic_usage.rs
 // Basic usage example for RINQ v0.1
 
-use rusted_ca::domain::rinq::QueryBuilder;
+use rinq::QueryBuilder;
 
 fn main() {
     println!("=== RINQ v0.1 Basic Usage Examples ===\n");

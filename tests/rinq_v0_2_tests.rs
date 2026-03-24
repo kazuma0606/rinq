@@ -3,7 +3,7 @@
 // Tests for aggregation, grouping, deduplication, and transformation operations
 
 use proptest::prelude::*;
-use rusted_ca::domain::rinq::QueryBuilder;
+use rinq::QueryBuilder;
 use std::collections::{HashMap, HashSet};
 
 // ============================================================================

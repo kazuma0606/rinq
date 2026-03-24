@@ -2,8 +2,8 @@
 // Property-based tests for RINQ v0.1
 
 use proptest::prelude::*;
-use rusted_ca::domain::rinq::QueryBuilder;
-use rusted_ca::domain::rinq::query_builder::Queryable;
+use rinq::QueryBuilder;
+use rinq::Queryable;
 
 // **Feature: rinq-v0.1, Property 6.4: 型状態パターンによる有効なクエリ構築の強制**
 // **Validates: Requirements 6.4**
@@ -1536,40 +1536,24 @@ fn test_error_handling_all_on_empty() {
 }
 
 #[test]
-fn test_rinq_domain_error_to_application_error() {
-    use rusted_ca::domain::rinq::RinqDomainError;
-    use rusted_ca::shared::error::application_error::ApplicationError;
-
-    let rinq_error = RinqDomainError::InvalidQuery {
-        message: "Test error".to_string(),
-    };
-
-    let app_error: ApplicationError = rinq_error.into();
-
-    // Should convert to ApplicationError::Domain
-    assert!(matches!(app_error, ApplicationError::Domain(_)));
-    assert!(app_error.to_string().contains("Test error"));
-}
-
-#[test]
 fn test_rinq_error_messages() {
-    use rusted_ca::domain::rinq::RinqDomainError;
+    use rinq::RinqError;
 
-    let error1 = RinqDomainError::InvalidQuery {
+    let error1 = RinqError::InvalidQuery {
         message: "Invalid predicate".to_string(),
     };
     assert!(error1.to_string().contains("Invalid query construction"));
     assert!(error1.to_string().contains("Invalid predicate"));
 
-    let error2 = RinqDomainError::IteratorExhausted;
+    let error2 = RinqError::IteratorExhausted;
     assert_eq!(error2.to_string(), "Iterator exhausted");
 
-    let error3 = RinqDomainError::ExecutionError {
+    let error3 = RinqError::ExecutionError {
         message: "Failed to execute".to_string(),
     };
     assert!(error3.to_string().contains("Query execution failed"));
 
-    let error4 = RinqDomainError::TypeMismatch {
+    let error4 = RinqError::TypeMismatch {
         expected: "i32".to_string(),
         actual: "String".to_string(),
     };

@@ -5,7 +5,7 @@
 // against manual implementations
 
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use rusted_ca::domain::rinq::QueryBuilder;
+use rinq::QueryBuilder;
 use std::collections::HashMap;
 
 // Benchmark data generators

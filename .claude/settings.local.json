@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo rustc:*)",
+      "Bash(sed -i -e 's|use rusted_ca::domain::rinq::QueryBuilder;|use rinq::QueryBuilder;|g' -e 's|use rusted_ca::domain::rinq::query_builder::Queryable;|use rinq::Queryable;|g' tests/rinq_property_tests.rs)",
+      "Bash(__NEW_LINE_033fe816542b5d21__ sed:*)",
+      "Bash(cargo bench:*)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
