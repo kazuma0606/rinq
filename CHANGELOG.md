@@ -5,6 +5,31 @@ All notable changes to RINQ (Rust Integrated Query) will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2026-03-24
+
+### Breaking Changes
+
+- **Crate renamed**: `rusted_ca` → `rinq`. Update `Cargo.toml` to `rinq = "1.0"` and all imports to `use rinq::`.
+- **Error type renamed**: `RinqDomainError` → `RinqError`. Update all match arms and type annotations.
+- **Import paths changed**: `rusted_ca::domain::rinq::QueryBuilder` → `rinq::QueryBuilder`; `rusted_ca::domain::rinq::query_builder::Queryable` → `rinq::Queryable`.
+
+### Removed
+
+- All web-application layers (presentation, application, infrastructure, domain entities).
+- gRPC / protobuf support (`build.rs`, `proto/`).
+- Docker Compose configuration.
+- `ApplicationError` and its conversion from `RinqError`.
+- `src/shared/`, `src/state/`, `src/main.rs`.
+
+### Added
+
+- `rinq::core::*` — pure query engine (`QueryBuilder`, `Queryable`, `RinqError`, `RinqResult`, state types).
+- `rinq::metrics::*` — metrics integration (`MetricsQueryBuilder`, `MetricsCollector`).
+- Flat re-exports at crate root: `use rinq::QueryBuilder`, `use rinq::MetricsCollector`, etc.
+- `versions/v1/spec.md` — formal v1.0 specification.
+
+---
+
 ## [v0.2.0] - 2026-03-08
 
 ### Added

@@ -2,7 +2,7 @@
 // Property-based test for RINQ immutability (Task 2.2)
 
 use proptest::prelude::*;
-use rusted_ca::domain::rinq::QueryBuilder;
+use rinq::QueryBuilder;
 
 // **Feature: rinq-v0.1, Property 3: 不変性の保証**
 // **Validates: Requirements 1.5**

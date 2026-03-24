@@ -2,7 +2,7 @@
 // Performance benchmarks for RINQ
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use rusted_ca::domain::rinq::QueryBuilder;
+use rinq::QueryBuilder;
 
 // **Task 14.1: Benchmark for zero-cost abstraction verification**
 // **Validates: Requirements 7.2**
