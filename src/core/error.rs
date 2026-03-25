@@ -3,20 +3,28 @@
 
 use thiserror::Error;
 
+/// Errors that can be returned by rinq query operations.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum RinqError {
-    /// クエリの構築が不正な場合（無効な引数等）
+    /// Query construction failed due to an invalid argument.
     #[error("Invalid query construction: {message}")]
-    InvalidQuery { message: String },
+    InvalidQuery {
+        /// Description of the invalid argument or construction error.
+        message: String,
+    },
 
-    /// イテレータが枯渇した場合（空コレクションへの要素アクセス等）
+    /// The iterator was exhausted before the requested element was found.
+    /// Returned by `first()`, `last()`, `single()`, `element_at()` on empty inputs.
     #[error("Iterator exhausted")]
     IteratorExhausted,
 
-    /// クエリ実行中のランタイムエラー（重複キー・要素数の期待値違反等）
+    /// A runtime error occurred during query execution (duplicate key, wrong element count, etc.).
     #[error("Query execution failed: {message}")]
-    ExecutionError { message: String },
+    ExecutionError {
+        /// Description of the execution failure.
+        message: String,
+    },
 }
 
-/// Result type for RINQ operations
+/// Result type alias for all rinq operations that can fail.
 pub type RinqResult<T> = Result<T, RinqError>;

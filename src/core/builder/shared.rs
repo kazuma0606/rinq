@@ -7,6 +7,8 @@ use crate::core::state::Filtered;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
+#[cfg(feature = "parallel")]
+use crate::parallel::ParallelQueryBuilder;
 
 // Terminal operations available in all states
 impl<T: 'static, State> QueryBuilder<T, State> {
@@ -31,6 +33,15 @@ impl<T: 'static, State> QueryBuilder<T, State> {
         match self.data {
             QueryData::Iterator(iter) => iter.collect(),
             QueryData::SortedVec { items, .. } => items.into_iter().collect(),
+        }
+    }
+
+    /// Materialize all items into a `Vec<T>` (internal helper).
+    #[inline]
+    pub(crate) fn into_vec(self) -> Vec<T> {
+        match self.data {
+            QueryData::Iterator(iter) => iter.collect(),
+            QueryData::SortedVec { items, .. } => items,
         }
     }
 
@@ -580,5 +591,36 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             map.entry(key).or_default().push(item);
         }
         map
+    }
+}
+
+// ── parallel feature ────────────────────────────────────────────────────────
+
+#[cfg(feature = "parallel")]
+impl<T: Send + 'static, State> QueryBuilder<T, State> {
+    /// `QueryBuilder` を `ParallelQueryBuilder` に変換する。
+    ///
+    /// 内部データを `Vec<T>` にマテリアライズしてから `ParallelQueryBuilder` に渡す。
+    /// 遅延評価のメリットはこの時点で失われるが、以降の操作は rayon で並列実行される。
+    ///
+    /// **実行種別**: 即時実行（マテリアライズ）
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    ///     .where_(|x| *x > 2)
+    ///     .into_parallel()
+    ///     .par_where(|x| *x % 2 != 0)
+    ///     .collect();
+    /// assert_eq!(result, vec![3, 5]);
+    /// ```
+    pub fn into_parallel(self) -> ParallelQueryBuilder<T, State> {
+        ParallelQueryBuilder {
+            items: self.into_vec(),
+            _state: PhantomData,
+        }
     }
 }

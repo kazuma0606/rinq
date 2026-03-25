@@ -22,6 +22,7 @@ pub struct Projected<U> {
 }
 
 impl<U> Projected<U> {
+    /// Create a new `Projected` state marker.
     pub fn new() -> Self {
         Self {
             _phantom: PhantomData,
