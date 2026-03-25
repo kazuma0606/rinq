@@ -5,6 +5,78 @@ All notable changes to RINQ (Rust Integrated Query) will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0] - 2026-03-25
+
+### Breaking Changes
+
+- **`RinqError::InvalidState` removed**: This variant was dead code (never constructed). Remove any match arms for `InvalidState`.
+- **`RinqError::TypeMismatch` removed**: Conceptually invalid in statically-typed Rust. Remove any match arms for `TypeMismatch`.
+
+### Added
+
+#### High-Priority Operators (M2)
+- `flat_map(f)` — Flatten nested iterables. `Initial/Filtered → Filtered`. 遅延ストリーミング。
+- `take_while(pred)` — Take elements while predicate holds. `Initial/Filtered/Sorted → Filtered`. 遅延ストリーミング。
+- `skip_while(pred)` — Skip elements while predicate holds. `Initial/Filtered/Sorted → Filtered`. 遅延ストリーミング。
+- `contains(&value)` — Check if a value is present (`T: PartialEq`). 即時実行。
+- `first_or_default()` — First element or `T::default()` (`T: Default`). 即時実行。
+- `last_or_default()` — Last element or `T::default()` (`T: Default`). 即時実行。
+- `single()` — The one element or error (0 → `IteratorExhausted`, 2+ → `ExecutionError`). 即時実行。
+- `single_or_default()` — Like `single` but 0 elements returns `Ok(T::default())`. 即時実行。
+
+#### Medium-Priority Operators (M3)
+- `order_by_descending(key)` — Sort descending. `Initial/Filtered → Sorted`. 遅延非ストリーミング。
+- `then_by_descending(key)` — Secondary sort descending. `Sorted → Sorted`. 遅延非ストリーミング。
+- `aggregate(seed, f)` — Fold with seed value. 即時実行。
+- `aggregate_no_seed(f)` — Fold without seed; returns `None` if empty. 即時実行。
+- `concat(other)` — Chain another iterable. `→ Filtered`. 遅延ストリーミング。
+- `union(other)` — Set union, deduplicating (`T: Hash + Eq + Clone`). `→ Filtered`. 遅延非ストリーミング。
+- `intersect(other)` — Set intersection. `→ Filtered`. 遅延非ストリーミング。
+- `except(other)` — Set difference (self minus other). `→ Filtered`. 遅延非ストリーミング。
+- `to_hashmap(key_selector)` — Collect to `HashMap<K, T>`; `Err` on duplicate keys. 即時実行。
+- `to_lookup(key_selector)` — Collect to `HashMap<K, Vec<T>>`; allows duplicate keys. 即時実行。
+- `element_at(index)` — Element at index or `None`. 即時実行。
+
+#### Generation Operators (M4)
+- `QueryBuilder::range(iterable)` — Build from any `IntoIterator` (e.g. `0..10`, `1..=100`).
+- `QueryBuilder::repeat(value, count)` — Repeat a value N times (`T: Clone`).
+- `QueryBuilder::empty()` — Empty sequence.
+
+#### MetricsQueryBuilder (M5)
+- All M2–M4 operators forwarded to `MetricsQueryBuilder` for all states.
+- Immediate operators (`contains`, `single`, `aggregate`, `to_hashmap`, etc.) record metrics.
+- Generation operators `range`, `repeat`, `empty` available as static constructors.
+
+### Changed
+
+#### Internal: Module split (no public API change)
+- `src/core/builder.rs` (2619 lines) → `src/core/builder/` subdirectory:
+  - `mod.rs` — `QueryBuilder<T, State>` struct + `QueryData<T>` enum
+  - `iterators.rs` — `ChunkIterator`, `WindowIterator`
+  - `initial.rs` — `impl QueryBuilder<T, Initial>`
+  - `filtered.rs` — `impl QueryBuilder<T, Filtered>`
+  - `sorted.rs` — `impl QueryBuilder<T, Sorted>`
+  - `shared.rs` — `impl<T, State> QueryBuilder<T, State>` (terminal + set ops)
+  - `queryable.rs` — `Queryable` trait + 7 collection impls
+- `src/metrics/builder.rs` → `src/metrics/builder/` subdirectory:
+  - `mod.rs` — `MetricsQueryBuilder<T, State>` struct
+  - `impl_.rs` — all 4 state impl blocks
+
+### Migration Guide
+
+```rust
+// Remove match arms for deleted variants:
+match err {
+    RinqError::InvalidQuery { message } => { /* ... */ }
+    RinqError::IteratorExhausted => { /* ... */ }
+    RinqError::ExecutionError { message } => { /* ... */ }
+    // RinqError::InvalidState   ← delete this arm
+    // RinqError::TypeMismatch   ← delete this arm
+}
+```
+
+---
+
 ## [v1.0.0] - 2026-03-24
 
 ### Breaking Changes

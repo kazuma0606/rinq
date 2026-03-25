@@ -1,7 +1,7 @@
 // src/domain/rinq/tests.rs
 // Unit and property-based tests for RINQ
 
-use rinq::QueryBuilder;
+use rinq::{QueryBuilder, RinqError};
 
 #[test]
 fn test_from_creates_query_builder() {
@@ -540,10 +540,345 @@ mod property_tests {
             
             // Both should produce the same result (order-independent for AND logic)
             prop_assert_eq!(result1.len(), result2.len());
-            
+
             // Verify all elements satisfy both predicates
             prop_assert!(result1.iter().all(|x| *x % 2 == 0 && *x > 10));
             prop_assert!(result2.iter().all(|x| *x % 2 == 0 && *x > 10));
         }
     }
+}
+
+// ── T1: then_by_descending ───────────────────────────────────────────────────
+
+#[test]
+fn test_then_by_descending_basic() {
+    #[derive(Debug, Clone, PartialEq)]
+    struct Item { category: i32, value: i32 }
+
+    let data = vec![
+        Item { category: 1, value: 10 },
+        Item { category: 2, value: 30 },
+        Item { category: 1, value: 20 },
+        Item { category: 2, value: 10 },
+    ];
+
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .order_by(|x| x.category)
+        .then_by_descending(|x| x.value)
+        .collect();
+
+    // category 1: value 20 before 10 (descending)
+    assert_eq!(result[0].category, 1);
+    assert_eq!(result[0].value, 20);
+    assert_eq!(result[1].category, 1);
+    assert_eq!(result[1].value, 10);
+    // category 2: value 30 before 10 (descending)
+    assert_eq!(result[2].category, 2);
+    assert_eq!(result[2].value, 30);
+    assert_eq!(result[3].category, 2);
+    assert_eq!(result[3].value, 10);
+}
+
+#[test]
+fn test_then_by_descending_all_equal_primary() {
+    // When all primary keys are equal, result should be sorted by secondary key descending
+    let data = vec![
+        (1, 5),
+        (1, 3),
+        (1, 8),
+        (1, 1),
+    ];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .order_by(|x| x.0)
+        .then_by_descending(|x| x.1)
+        .collect();
+    assert_eq!(result, vec![(1, 8), (1, 5), (1, 3), (1, 1)]);
+}
+
+#[test]
+fn test_then_by_descending_single_element() {
+    let data = vec![(42, 99)];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .order_by(|x| x.0)
+        .then_by_descending(|x| x.1)
+        .collect();
+    assert_eq!(result, vec![(42, 99)]);
+}
+
+// ── T2: take_while / skip_while ──────────────────────────────────────────────
+
+#[test]
+fn test_take_while_basic() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 4).collect();
+    assert_eq!(result, vec![1, 2, 3]);
+}
+
+#[test]
+fn test_take_while_all_match() {
+    let data = vec![1, 2, 3];
+    let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 100).collect();
+    assert_eq!(result, vec![1, 2, 3]);
+}
+
+#[test]
+fn test_take_while_none_match() {
+    let data = vec![10, 20, 30];
+    let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 5).collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_take_while_empty_collection() {
+    let data: Vec<i32> = vec![];
+    let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 100).collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_take_while_after_filter() {
+    // Filtered state -> take_while
+    let data = vec![1, 2, 3, 4, 5, 6];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x % 2 == 0)
+        .take_while(|x| *x < 5)
+        .collect();
+    assert_eq!(result, vec![2, 4]);
+}
+
+#[test]
+fn test_take_while_after_sort() {
+    // Sorted state -> take_while
+    let data = vec![5, 1, 3, 2, 4];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .order_by(|x| *x)
+        .take_while(|x| *x <= 3)
+        .collect();
+    assert_eq!(result, vec![1, 2, 3]);
+}
+
+#[test]
+fn test_skip_while_basic() {
+    let data = vec![1, 2, 3, 4, 5];
+    let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 3).collect();
+    assert_eq!(result, vec![3, 4, 5]);
+}
+
+#[test]
+fn test_skip_while_all_match() {
+    let data = vec![1, 2, 3];
+    let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 100).collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_skip_while_none_match() {
+    let data = vec![10, 20, 30];
+    let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 5).collect();
+    assert_eq!(result, vec![10, 20, 30]);
+}
+
+#[test]
+fn test_skip_while_empty_collection() {
+    let data: Vec<i32> = vec![];
+    let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 100).collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_skip_while_after_filter() {
+    let data = vec![1, 2, 3, 4, 5, 6];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|x| *x % 2 == 0)
+        .skip_while(|x| *x < 4)
+        .collect();
+    assert_eq!(result, vec![4, 6]);
+}
+
+#[test]
+fn test_skip_while_after_sort() {
+    let data = vec![5, 1, 3, 2, 4];
+    let result: Vec<_> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .order_by(|x| *x)
+        .skip_while(|x| *x <= 3)
+        .collect();
+    assert_eq!(result, vec![4, 5]);
+}
+
+// ── T3: repeat / empty ───────────────────────────────────────────────────────
+
+#[test]
+fn test_repeat_basic() {
+    let result: Vec<i32> = QueryBuilder::repeat(7, 4).collect();
+    assert_eq!(result, vec![7, 7, 7, 7]);
+}
+
+#[test]
+fn test_repeat_zero_count() {
+    let result: Vec<i32> = QueryBuilder::repeat(42, 0).collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_repeat_count_one() {
+    let result: Vec<&str> = QueryBuilder::repeat("hello", 1).collect();
+    assert_eq!(result, vec!["hello"]);
+}
+
+#[test]
+fn test_empty_collects_to_empty_vec() {
+    let result: Vec<i32> = QueryBuilder::empty().collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_empty_count_is_zero() {
+    let count: usize = QueryBuilder::<i32, _>::empty().count();
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn test_empty_chained() {
+    let result: Vec<i32> = QueryBuilder::empty()
+        .where_(|x| *x > 0)
+        .collect();
+    assert_eq!(result, vec![]);
+}
+
+// ── T4: flat_map edge cases ──────────────────────────────────────────────────
+
+#[test]
+fn test_flat_map_empty_outer() {
+    let data: Vec<Vec<i32>> = vec![];
+    let result: Vec<i32> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .flat_map(|v| v)
+        .collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_flat_map_empty_inner() {
+    let data: Vec<Vec<i32>> = vec![vec![], vec![], vec![]];
+    let result: Vec<i32> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .flat_map(|v| v)
+        .collect();
+    assert_eq!(result, vec![]);
+}
+
+#[test]
+fn test_flat_map_mixed_empty_and_nonempty() {
+    let data: Vec<Vec<i32>> = vec![vec![1, 2], vec![], vec![3]];
+    let result: Vec<i32> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .flat_map(|v| v)
+        .collect();
+    assert_eq!(result, vec![1, 2, 3]);
+}
+
+#[test]
+fn test_flat_map_type_transformation() {
+    // i32 -> String (T → U type change)
+    let data = vec![1, 2, 3];
+    let result: Vec<String> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .flat_map(|x| vec![format!("{}", x), format!("{}!", x)])
+        .collect();
+    assert_eq!(result, vec!["1", "1!", "2", "2!", "3", "3!"]);
+}
+
+#[test]
+fn test_flat_map_after_filter() {
+    let data = vec![1, 2, 3, 4];
+    let result: Vec<i32> = QueryBuilder::from(data)
+        .where_(|x| *x % 2 == 0)
+        .flat_map(|x| vec![x, x * 10])
+        .collect();
+    assert_eq!(result, vec![2, 20, 4, 40]);
+}
+
+#[test]
+fn test_flat_map_preserves_order() {
+    let data = vec![vec![3, 1], vec![4, 1, 5]];
+    let result: Vec<i32> = QueryBuilder::from(data)
+        .where_(|_| true)
+        .flat_map(|v| v)
+        .collect();
+    assert_eq!(result, vec![3, 1, 4, 1, 5]);
+}
+
+// ── M2: contains / first_or_default / single / single_or_default ─────────────
+
+#[test]
+fn test_contains_existing_element() {
+    let data = vec![1, 2, 3, 4, 5];
+    assert!(QueryBuilder::from(data).contains(&3));
+}
+
+#[test]
+fn test_contains_missing_element() {
+    let data = vec![1, 2, 3];
+    assert!(!QueryBuilder::from(data).contains(&99));
+}
+
+#[test]
+fn test_contains_empty_collection() {
+    let data: Vec<i32> = vec![];
+    assert!(!QueryBuilder::from(data).contains(&0));
+}
+
+#[test]
+fn test_first_or_default_empty() {
+    let data: Vec<i32> = vec![];
+    assert_eq!(QueryBuilder::from(data).first_or_default(), 0);
+}
+
+#[test]
+fn test_first_or_default_nonempty() {
+    let data = vec![42, 1, 2];
+    assert_eq!(QueryBuilder::from(data).first_or_default(), 42);
+}
+
+#[test]
+fn test_last_or_default_empty() {
+    let data: Vec<i32> = vec![];
+    assert_eq!(QueryBuilder::from(data).last_or_default(), 0);
+}
+
+#[test]
+fn test_last_or_default_nonempty() {
+    let data = vec![1, 2, 99];
+    assert_eq!(QueryBuilder::from(data).last_or_default(), 99);
+}
+
+#[test]
+fn test_single_zero_elements() {
+    let data: Vec<i32> = vec![];
+    let result = QueryBuilder::from(data).single();
+    assert!(matches!(result, Err(RinqError::IteratorExhausted)));
+}
+
+#[test]
+fn test_single_one_element() {
+    let data = vec![42];
+    assert_eq!(QueryBuilder::from(data).single(), Ok(42));
+}
+
+#[test]
+fn test_single_multiple_elements() {
+    let data = vec![1, 2];
+    let result = QueryBuilder::from(data).single();
+    assert!(matches!(result, Err(RinqError::ExecutionError { .. })));
+}
+
+#[test]
+fn test_single_or_default_empty() {
+    let data: Vec<i32> = vec![];
+    assert_eq!(QueryBuilder::from(data).single_or_default(), Ok(0));
 }

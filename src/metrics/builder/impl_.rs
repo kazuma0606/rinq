@@ -1,22 +1,14 @@
-// src/domain/rinq/metrics_query_builder.rs
-// Metrics-aware QueryBuilder wrapper for integration with rusted-ca
+// src/metrics/builder/impl_.rs
+// MetricsQueryBuilder implementation — all state impl blocks
 
+use super::MetricsQueryBuilder;
 use crate::core::builder::QueryBuilder;
+use crate::core::error::RinqResult;
 use crate::core::state::{Filtered, Initial, Projected, Sorted};
 use crate::metrics::collector::MetricsCollector;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
-
-/// Wrapper around QueryBuilder that records metrics for query operations
-///
-/// This struct integrates RINQ with rusted-ca's metrics collection system,
-/// allowing tracking of query execution times and operation counts.
-pub struct MetricsQueryBuilder<T, State> {
-    inner: QueryBuilder<T, State>,
-    metrics: Arc<MetricsCollector>,
-    operation_name: String,
-}
 
 impl<T: 'static> MetricsQueryBuilder<T, Initial> {
     /// Create a new MetricsQueryBuilder
@@ -350,6 +342,157 @@ impl<T: 'static> MetricsQueryBuilder<T, Initial> {
 
         result
     }
+
+    /// Flat map elements, flattening one level of nesting
+    #[inline]
+    pub fn flat_map<U, I, F>(self, f: F) -> MetricsQueryBuilder<U, Filtered>
+    where
+        F: Fn(T) -> I + 'static,
+        I: IntoIterator<Item = U> + 'static,
+        U: 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.flat_map(f),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Take elements while predicate holds
+    #[inline]
+    pub fn take_while<F>(self, predicate: F) -> MetricsQueryBuilder<T, Filtered>
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.take_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Skip elements while predicate holds
+    #[inline]
+    pub fn skip_while<F>(self, predicate: F) -> MetricsQueryBuilder<T, Filtered>
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.skip_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Concatenate with another sequence
+    #[inline]
+    pub fn concat(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered> {
+        MetricsQueryBuilder {
+            inner: self.inner.concat(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Union with another sequence, removing duplicates
+    #[inline]
+    pub fn union(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.union(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Intersect with another sequence
+    #[inline]
+    pub fn intersect(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.intersect(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Elements in self but not in other
+    #[inline]
+    pub fn except(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.except(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Create from a range or any iterable
+    #[inline]
+    pub fn range<R>(
+        range: R,
+        metrics: Arc<MetricsCollector>,
+        operation_name: String,
+    ) -> MetricsQueryBuilder<T, Initial>
+    where
+        R: IntoIterator<Item = T> + 'static,
+        R::IntoIter: 'static,
+    {
+        MetricsQueryBuilder {
+            inner: QueryBuilder::range(range),
+            metrics,
+            operation_name,
+        }
+    }
+
+    /// Create by repeating a value
+    #[inline]
+    pub fn repeat(
+        value: T,
+        count: usize,
+        metrics: Arc<MetricsCollector>,
+        operation_name: String,
+    ) -> MetricsQueryBuilder<T, Initial>
+    where
+        T: Clone,
+    {
+        MetricsQueryBuilder {
+            inner: QueryBuilder::repeat(value, count),
+            metrics,
+            operation_name,
+        }
+    }
+
+    /// Create an empty sequence
+    #[inline]
+    pub fn empty(
+        metrics: Arc<MetricsCollector>,
+        operation_name: String,
+    ) -> MetricsQueryBuilder<T, Initial> {
+        MetricsQueryBuilder {
+            inner: QueryBuilder::empty(),
+            metrics,
+            operation_name,
+        }
+    }
 }
 
 impl<T: 'static> MetricsQueryBuilder<T, Filtered> {
@@ -663,6 +806,96 @@ impl<T: 'static> MetricsQueryBuilder<T, Filtered> {
 
         result
     }
+
+    /// Flat map elements, flattening one level of nesting (Filtered state)
+    #[inline]
+    pub fn flat_map<U, I, F>(self, f: F) -> MetricsQueryBuilder<U, Filtered>
+    where
+        F: Fn(T) -> I + 'static,
+        I: IntoIterator<Item = U> + 'static,
+        U: 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.flat_map(f),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Take elements while predicate holds (Filtered state)
+    #[inline]
+    pub fn take_while<F>(self, predicate: F) -> Self
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        Self {
+            inner: self.inner.take_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Skip elements while predicate holds (Filtered state)
+    #[inline]
+    pub fn skip_while<F>(self, predicate: F) -> Self
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        Self {
+            inner: self.inner.skip_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Concatenate with another sequence (Filtered state)
+    #[inline]
+    pub fn concat(self, other: impl IntoIterator<Item = T> + 'static) -> Self {
+        Self {
+            inner: self.inner.concat(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Union with another sequence, removing duplicates (Filtered state)
+    #[inline]
+    pub fn union(self, other: impl IntoIterator<Item = T> + 'static) -> Self
+    where
+        T: Hash + Eq + Clone,
+    {
+        Self {
+            inner: self.inner.union(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Intersect with another sequence (Filtered state)
+    #[inline]
+    pub fn intersect(self, other: impl IntoIterator<Item = T> + 'static) -> Self
+    where
+        T: Hash + Eq + Clone,
+    {
+        Self {
+            inner: self.inner.intersect(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Elements in self but not in other (Filtered state)
+    #[inline]
+    pub fn except(self, other: impl IntoIterator<Item = T> + 'static) -> Self
+    where
+        T: Hash + Eq + Clone,
+    {
+        Self {
+            inner: self.inner.except(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
 }
 
 impl<T: 'static> MetricsQueryBuilder<T, Sorted> {
@@ -950,6 +1183,93 @@ impl<T: 'static> MetricsQueryBuilder<T, Sorted> {
 
         result
     }
+
+    /// Take elements while predicate holds (Sorted state)
+    #[inline]
+    pub fn take_while<F>(self, predicate: F) -> MetricsQueryBuilder<T, Filtered>
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.take_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Skip elements while predicate holds (Sorted state)
+    #[inline]
+    pub fn skip_while<F>(self, predicate: F) -> MetricsQueryBuilder<T, Filtered>
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.skip_while(predicate),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Concatenate with another sequence (Sorted state)
+    #[inline]
+    pub fn concat(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered> {
+        MetricsQueryBuilder {
+            inner: self.inner.concat(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Union with another sequence, removing duplicates (Sorted state)
+    #[inline]
+    pub fn union(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.union(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Intersect with another sequence (Sorted state)
+    #[inline]
+    pub fn intersect(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.intersect(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
+
+    /// Elements in self but not in other (Sorted state)
+    #[inline]
+    pub fn except(
+        self,
+        other: impl IntoIterator<Item = T> + 'static,
+    ) -> MetricsQueryBuilder<T, Filtered>
+    where
+        T: Hash + Eq + Clone,
+    {
+        MetricsQueryBuilder {
+            inner: self.inner.except(other),
+            metrics: self.metrics,
+            operation_name: self.operation_name,
+        }
+    }
 }
 
 // Terminal operations with metrics recording
@@ -1037,6 +1357,162 @@ impl<T: 'static, State> MetricsQueryBuilder<T, State> {
 
         self.metrics
             .record_query_execution(&format!("{}_all", self.operation_name), duration);
+
+        result
+    }
+
+    /// Check if the sequence contains a value and record metrics
+    #[inline]
+    pub fn contains(self, value: &T) -> bool
+    where
+        T: PartialEq,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.contains(value);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_contains", self.operation_name), duration);
+
+        result
+    }
+
+    /// Get the first element or default and record metrics
+    #[inline]
+    pub fn first_or_default(self) -> T
+    where
+        T: Default,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.first_or_default();
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_first_or_default", self.operation_name), duration);
+
+        result
+    }
+
+    /// Get the last element or default and record metrics
+    #[inline]
+    pub fn last_or_default(self) -> T
+    where
+        T: Default,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.last_or_default();
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_last_or_default", self.operation_name), duration);
+
+        result
+    }
+
+    /// Get the single element and record metrics
+    #[inline]
+    pub fn single(self) -> RinqResult<T> {
+        let start = std::time::Instant::now();
+        let result = self.inner.single();
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_single", self.operation_name), duration);
+
+        result
+    }
+
+    /// Get the single element or default and record metrics
+    #[inline]
+    pub fn single_or_default(self) -> RinqResult<T>
+    where
+        T: Default,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.single_or_default();
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_single", self.operation_name), duration);
+
+        result
+    }
+
+    /// Get the element at the given index and record metrics
+    #[inline]
+    pub fn element_at(self, index: usize) -> Option<T> {
+        let start = std::time::Instant::now();
+        let result = self.inner.element_at(index);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_element_at", self.operation_name), duration);
+
+        result
+    }
+
+    /// Aggregate with seed and record metrics
+    #[inline]
+    pub fn aggregate<Acc, F>(self, seed: Acc, f: F) -> Acc
+    where
+        F: Fn(Acc, T) -> Acc,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.aggregate(seed, f);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_aggregate", self.operation_name), duration);
+
+        result
+    }
+
+    /// Aggregate without seed and record metrics
+    #[inline]
+    pub fn aggregate_no_seed<F>(self, f: F) -> Option<T>
+    where
+        F: Fn(T, T) -> T,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.aggregate_no_seed(f);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_aggregate", self.operation_name), duration);
+
+        result
+    }
+
+    /// Collect into a HashMap and record metrics
+    #[inline]
+    pub fn to_hashmap<K, F>(self, key_selector: F) -> RinqResult<HashMap<K, T>>
+    where
+        K: Hash + Eq,
+        F: Fn(&T) -> K,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.to_hashmap(key_selector);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_to_hashmap", self.operation_name), duration);
+
+        result
+    }
+
+    /// Collect into a lookup (HashMap of Vec) and record metrics
+    #[inline]
+    pub fn to_lookup<K, F>(self, key_selector: F) -> HashMap<K, Vec<T>>
+    where
+        K: Hash + Eq,
+        F: Fn(&T) -> K,
+    {
+        let start = std::time::Instant::now();
+        let result = self.inner.to_lookup(key_selector);
+        let duration = start.elapsed();
+
+        self.metrics
+            .record_query_execution(&format!("{}_to_lookup", self.operation_name), duration);
 
         result
     }
