@@ -1,0 +1,21 @@
+[package]
+name = "rinq-stats"
+version = "3.0.0"
+edition = "2024"
+description = "Statistical extensions for the rinq query engine — descriptive stats, correlation, regression, sampling, and validation."
+license = "MIT"
+repository = "https://github.com/yoshidev/rusted-ca"
+keywords = ["statistics", "sampling", "query", "linq", "analytics"]
+categories = ["science", "data-structures"]
+readme = "../README.md"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+rinq    = { path = ".." }
+rand    = { version = "0.8", features = ["small_rng"] }
+log     = "0.4"
+
+[dev-dependencies]
+approx = "0.5"

@@ -6,6 +6,9 @@ mod initial;
 mod filtered;
 mod sorted;
 mod shared;
+mod window;
+mod try_ops;
+mod serde_ops;
 mod queryable;
 
 pub use queryable::{Queryable};

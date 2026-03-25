@@ -93,7 +93,7 @@ impl<T: 'static> QueryBuilder<T, Initial> {
     /// use rinq::QueryBuilder;
     ///
     /// let result: Vec<i32> = QueryBuilder::empty().collect();
-    /// assert_eq!(result, vec![]);
+    /// assert!(result.is_empty());
     /// ```
     #[inline]
     pub fn empty() -> QueryBuilder<T, Initial> {

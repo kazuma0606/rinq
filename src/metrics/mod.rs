@@ -1,3 +1,6 @@
+//! Metrics-instrumented query builder and collector.
+#![allow(missing_docs)]
+
 pub mod builder;
 pub mod collector;
 

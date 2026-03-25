@@ -5,6 +5,60 @@ All notable changes to RINQ (Rust Integrated Query) will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v3.0.0] - 2026-03-25
+
+### Breaking Changes
+
+None. All v2.0 public API is preserved.
+
+### Added
+
+#### Phase A1 — Parallel execution (`parallel` feature)
+- `QueryBuilder::into_parallel()` — converts any builder state into a `ParallelQueryBuilder<T, State>` backed by [rayon](https://docs.rs/rayon).
+- `ParallelQueryBuilder` with: `par_where`, `par_select`, `par_flat_map`, `par_order_by`, `par_count`, `par_sum`, `par_min`, `par_max`, `par_any`, `par_all`, `par_group_by`, `collect`.
+- New Cargo feature flag: `parallel`.
+
+#### Phase A2 — Window analytics
+- `running_sum()` — cumulative sum over a numeric sequence.
+- `running_average()` — cumulative mean (produces `f64`).
+- `moving_average(window)` — sliding-window mean; `None` until window fills (`Option<f64>` output).
+- `rank_by(key)` — standard competition rank (1-based, gaps on ties).
+- `dense_rank_by(key)` — dense rank (no gaps on ties).
+- `lag(n)` — pair each element with its predecessor `n` positions back (`Option<T>`).
+- `lead(n)` — pair each element with its successor `n` positions ahead (`Option<T>`).
+
+#### Phase A3 — Failure-tolerant pipelines
+- `TryQueryBuilder<T, E>` — wraps `Box<dyn Iterator<Item = Result<T, E>>>`.
+- `QueryBuilder::try_select(f)` — fallible map; errors flow into the stream.
+- `QueryBuilder::try_where_(f)` — fallible filter; `Ok(true)` keep, `Ok(false)` drop, `Err(e)` error.
+- `TryQueryBuilder::collect_partitioned()` — returns `(Vec<T>, Vec<E>)` collecting all.
+- `TryQueryBuilder::collect_results()` — returns `Result<Vec<T>, E>`, short-circuiting on first error.
+
+#### Phase A4 — Serde integration (`serde` feature)
+- `QueryBuilder::from_json(json: &str)` — deserialise a JSON array into a query pipeline.
+- `QueryBuilder::from_json_value(json: &str)` — deserialise into `QueryBuilder<serde_json::Value, Initial>`.
+- `use rinq::serde::QueryBuilder` import path for serde-oriented usage.
+- New Cargo feature flag: `serde`.
+
+#### Phase B1–B3 — `rinq-stats` companion crate
+New crate `rinq-stats = "3.0"` providing statistical extensions:
+
+- **`StatisticsExt` trait** (B1): `variance`, `std_dev`, `median`, `mode`, `percentile`, `quantile`, `skewness`, `kurtosis`, `histogram`, `frequency_table`.
+- **`QueryPair`** (B2): two-series analysis. `new` (truncating), `try_new` (strict), `from_builders`. Methods: `covariance`, `pearson_correlation`, `spearman_correlation`, `kendall_tau`, `linear_regression`.
+- **`SamplingExt` trait** (B3): `sample_fraction`, `sample_n`, `stratified_sample`, `bootstrap_sample`. Reservoir sampling via Vitter's Algorithm R.
+
+#### Phase B4 — Validation (`rinq-stats`)
+- **`ValidationExt` trait**: `QueryBuilder::validate(predicate, rule, message)` opens a `ValidationQueryBuilder<T>`.
+- **`ValidationQueryBuilder`**: chainable `.validate()` rules; terminals: `collect_validated()` (all violations collected), `collect_valid()` (passing items only), `collect_invalid()` (failing items with errors).
+- **`ValidationError`**: `{ rule: String, message: String, index: usize }` — implements `Display`, `Clone`, `PartialEq`.
+
+#### Phase C — Documentation and publishing
+- Crate-level `//!` documentation with quick start, state machine table, and feature-flag reference.
+- `#![warn(missing_docs)]` enabled on `rinq`.
+- `RinqError` and all public type-state markers fully documented.
+- `Cargo.toml` metadata: `description`, `license`, `repository`, `keywords`, `categories`, `readme`.
+- `[package.metadata.docs.rs] all-features = true` in both crates.
+
 ## [v2.0.0] - 2026-03-25
 
 ### Breaking Changes

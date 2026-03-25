@@ -628,14 +628,14 @@ fn test_take_while_all_match() {
 fn test_take_while_none_match() {
     let data = vec![10, 20, 30];
     let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 5).collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
 fn test_take_while_empty_collection() {
     let data: Vec<i32> = vec![];
     let result: Vec<_> = QueryBuilder::from(data).take_while(|x| *x < 100).collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -672,7 +672,7 @@ fn test_skip_while_basic() {
 fn test_skip_while_all_match() {
     let data = vec![1, 2, 3];
     let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 100).collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -686,7 +686,7 @@ fn test_skip_while_none_match() {
 fn test_skip_while_empty_collection() {
     let data: Vec<i32> = vec![];
     let result: Vec<_> = QueryBuilder::from(data).skip_while(|x| *x < 100).collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -721,7 +721,7 @@ fn test_repeat_basic() {
 #[test]
 fn test_repeat_zero_count() {
     let result: Vec<i32> = QueryBuilder::repeat(42, 0).collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -733,7 +733,7 @@ fn test_repeat_count_one() {
 #[test]
 fn test_empty_collects_to_empty_vec() {
     let result: Vec<i32> = QueryBuilder::empty().collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -747,7 +747,7 @@ fn test_empty_chained() {
     let result: Vec<i32> = QueryBuilder::empty()
         .where_(|x| *x > 0)
         .collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 // ── T4: flat_map edge cases ──────────────────────────────────────────────────
@@ -759,7 +759,7 @@ fn test_flat_map_empty_outer() {
         .where_(|_| true)
         .flat_map(|v| v)
         .collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]
@@ -769,7 +769,7 @@ fn test_flat_map_empty_inner() {
         .where_(|_| true)
         .flat_map(|v| v)
         .collect();
-    assert_eq!(result, vec![]);
+    assert!(result.is_empty());
 }
 
 #[test]

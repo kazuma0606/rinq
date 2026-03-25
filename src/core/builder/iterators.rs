@@ -1,5 +1,5 @@
 // src/core/builder/iterators.rs
-// Custom iterator adapters: ChunkIterator and WindowIterator
+// Custom iterator adapters: ChunkIterator, WindowIterator, MovingAverageIterator
 
 use std::collections::VecDeque;
 
@@ -24,6 +24,46 @@ where
             }
         }
         if chunk.is_empty() { None } else { Some(chunk) }
+    }
+}
+
+/// Iterator adapter for computing a sliding-window average.
+///
+/// Produces `None` for the first `window - 1` elements (incomplete window),
+/// then `Some(avg)` for each subsequent position.
+pub(crate) struct MovingAverageIterator {
+    values: std::vec::IntoIter<f64>,
+    window: usize,
+    buffer: VecDeque<f64>,
+    sum: f64,
+}
+
+impl MovingAverageIterator {
+    pub(crate) fn new(values: Vec<f64>, window: usize) -> Self {
+        debug_assert!(window >= 1);
+        Self {
+            values: values.into_iter(),
+            window,
+            buffer: VecDeque::with_capacity(window),
+            sum: 0.0,
+        }
+    }
+}
+
+impl Iterator for MovingAverageIterator {
+    type Item = Option<f64>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let val = self.values.next()?;
+        self.buffer.push_back(val);
+        self.sum += val;
+        if self.buffer.len() < self.window {
+            Some(None)
+        } else {
+            let avg = self.sum / self.window as f64;
+            self.sum -= self.buffer.pop_front().unwrap_or(0.0);
+            Some(Some(avg))
+        }
     }
 }
 

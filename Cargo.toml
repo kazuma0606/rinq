@@ -1,16 +1,37 @@
+[workspace]
+members = [".", "rinq-stats"]
+resolver = "2"
+
 [package]
 name = "rinq"
-version = "1.0.0"
+version = "3.0.0"
 edition = "2024"
+description = "Type-safe, zero-cost LINQ-inspired query engine for Rust — filter, sort, aggregate, window analytics, parallel execution, and statistical extensions."
+license = "MIT"
+repository = "https://github.com/yoshidev/rusted-ca"
+keywords = ["query", "linq", "iterator", "collections", "analytics"]
+categories = ["data-structures", "algorithms"]
+readme = "README.md"
+
+[features]
+default  = []
+parallel = ["dep:rayon"]
+serde    = ["dep:serde", "dep:serde_json"]
 
 [dependencies]
-thiserror = "1.0"
+thiserror  = "1.0"
 num-traits = "0.2"
 parking_lot = "0.12"
+rayon      = { version = "1.10", optional = true }
+serde      = { version = "1.0",  optional = true, features = ["derive"] }
+serde_json = { version = "1.0",  optional = true }
 
 [dev-dependencies]
-proptest = "1.0"
+proptest  = "1.0"
 criterion = "0.5"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [[bench]]
 name = "rinq_benchmarks"
