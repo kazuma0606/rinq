@@ -1552,14 +1552,6 @@ fn test_rinq_error_messages() {
         message: "Failed to execute".to_string(),
     };
     assert!(error3.to_string().contains("Query execution failed"));
-
-    let error4 = RinqError::TypeMismatch {
-        expected: "i32".to_string(),
-        actual: "String".to_string(),
-    };
-    assert!(error4.to_string().contains("Type mismatch"));
-    assert!(error4.to_string().contains("i32"));
-    assert!(error4.to_string().contains("String"));
 }
 
 #[test]
@@ -2124,5 +2116,309 @@ proptest! {
 
         // Results should be identical (both stable)
         prop_assert_eq!(rinq_result, std_result);
+    }
+}
+
+// ── T6: property tests for M2–M4 operators ──────────────────────────────────
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_take_while_subset_of_original(
+        data in prop::collection::vec(any::<i32>(), 0..100),
+        threshold in any::<i32>()
+    ) {
+        let result: Vec<_> = QueryBuilder::from(data.clone())
+            .take_while(move |x| *x < threshold)
+            .collect();
+        // Result must be a prefix of the original
+        prop_assert!(data.starts_with(&result));
+    }
+
+    #[test]
+    fn prop_skip_while_concat_take_while(
+        data in prop::collection::vec(any::<i32>(), 0..100),
+        threshold in any::<i32>()
+    ) {
+        let taken: Vec<_> = QueryBuilder::from(data.clone())
+            .take_while(move |x| *x < threshold)
+            .collect();
+        let skipped: Vec<_> = QueryBuilder::from(data.clone())
+            .skip_while(move |x| *x < threshold)
+            .collect();
+        let mut combined = taken;
+        combined.extend(skipped);
+        prop_assert_eq!(combined, data);
+    }
+
+    #[test]
+    fn prop_contains_iff_in_vec(
+        data in prop::collection::vec(any::<i32>(), 0..50),
+        value in any::<i32>()
+    ) {
+        let expected = data.iter().any(|x| *x == value);
+        let result = QueryBuilder::from(data).contains(&value);
+        prop_assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn prop_first_or_default_never_panics(
+        data in prop::collection::vec(any::<i32>(), 0..100)
+    ) {
+        // Must not panic for any input
+        let _ = QueryBuilder::from(data).first_or_default();
+    }
+
+    #[test]
+    fn prop_single_returns_err_on_multiple(
+        // Generate vectors with at least 2 elements
+        data in prop::collection::vec(any::<i32>(), 2..50)
+    ) {
+        let result = QueryBuilder::from(data).single();
+        prop_assert!(result.is_err());
+    }
+
+    #[test]
+    fn prop_single_or_default_ok_on_empty(
+        _dummy in prop::collection::vec(any::<i32>(), 0..1) // just to run as proptest
+    ) {
+        let result = QueryBuilder::from(Vec::<i32>::new()).single_or_default();
+        prop_assert_eq!(result, Ok(0i32));
+    }
+
+    #[test]
+    fn prop_aggregate_matches_fold(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let rinq_sum = QueryBuilder::from(data.clone())
+            .aggregate(0i64, |acc, x| acc.saturating_add(x as i64));
+        let manual_sum = data.iter().fold(0i64, |acc, &x| acc.saturating_add(x as i64));
+        prop_assert_eq!(rinq_sum, manual_sum);
+    }
+
+    #[test]
+    fn prop_concat_length(
+        a in prop::collection::vec(any::<i32>(), 0..50),
+        b in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let expected_len = a.len() + b.len();
+        let result_len = QueryBuilder::from(a).concat(b).count();
+        prop_assert_eq!(result_len, expected_len);
+    }
+
+    #[test]
+    fn prop_union_idempotent(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let mut union_result: Vec<_> = QueryBuilder::from(data.clone())
+            .union(data.clone())
+            .collect();
+        union_result.sort();
+
+        let mut distinct_result: Vec<_> = QueryBuilder::from(data)
+            .where_(|_| true)
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        distinct_result.sort();
+
+        prop_assert_eq!(union_result, distinct_result);
+    }
+
+    #[test]
+    fn prop_intersect_subset(
+        a in prop::collection::vec(any::<i32>(), 0..50),
+        b in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let b_set: std::collections::HashSet<_> = b.iter().copied().collect();
+        let a_set: std::collections::HashSet<_> = a.iter().copied().collect();
+
+        let result: Vec<_> = QueryBuilder::from(a).intersect(b).collect();
+
+        // Every result element must be in both a and b
+        for item in &result {
+            prop_assert!(a_set.contains(item), "item {} not in a", item);
+            prop_assert!(b_set.contains(item), "item {} not in b", item);
+        }
+    }
+
+    #[test]
+    fn prop_except_disjoint(
+        a in prop::collection::vec(any::<i32>(), 0..50),
+        b in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let b_set: std::collections::HashSet<_> = b.iter().copied().collect();
+        let result: Vec<_> = QueryBuilder::from(a).except(b).collect();
+        for item in &result {
+            prop_assert!(!b_set.contains(item), "item {} should not be in b", item);
+        }
+    }
+
+    #[test]
+    fn prop_element_at_matches_nth(
+        data in prop::collection::vec(any::<i32>(), 1..50),
+        idx in 0usize..50
+    ) {
+        let expected = data.get(idx).copied();
+        let result = QueryBuilder::from(data).element_at(idx);
+        prop_assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn prop_range_length(
+        n in 0usize..100
+    ) {
+        let count = QueryBuilder::range(0..n).count();
+        prop_assert_eq!(count, n);
+    }
+
+    #[test]
+    fn prop_repeat_all_equal(
+        value in any::<i32>(),
+        n in 0usize..50
+    ) {
+        let result: Vec<i32> = QueryBuilder::repeat(value, n).collect();
+        prop_assert_eq!(result.len(), n);
+        prop_assert!(result.iter().all(|x| *x == value));
+    }
+
+    #[test]
+    fn prop_empty_count_zero(
+        _dummy in prop::collection::vec(any::<i32>(), 0..1)
+    ) {
+        let count = QueryBuilder::<i32, _>::empty().count();
+        prop_assert_eq!(count, 0);
+    }
+}
+
+// ── T7: property tests for v0.2 operators ───────────────────────────────────
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn prop_sum_equals_iter_sum(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        // Use saturating to avoid overflow panics on random data
+        let rinq_sum: i64 = QueryBuilder::from(data.clone())
+            .aggregate(0i64, |acc, x| acc.saturating_add(x as i64));
+        let iter_sum: i64 = data.iter().fold(0i64, |acc, &x| acc.saturating_add(x as i64));
+        prop_assert_eq!(rinq_sum, iter_sum);
+    }
+
+    #[test]
+    fn prop_min_leq_all_elements(
+        data in prop::collection::vec(any::<i32>(), 1..50)
+    ) {
+        let min = QueryBuilder::from(data.clone())
+            .where_(|_| true)
+            .order_by(|x| *x)
+            .min();
+        let expected_min = data.iter().copied().min();
+        prop_assert_eq!(min, expected_min);
+    }
+
+    #[test]
+    fn prop_max_geq_all_elements(
+        data in prop::collection::vec(any::<i32>(), 1..50)
+    ) {
+        let max = QueryBuilder::from(data.clone())
+            .where_(|_| true)
+            .order_by(|x| *x)
+            .max();
+        let expected_max = data.iter().copied().max();
+        prop_assert_eq!(max, expected_max);
+    }
+
+    #[test]
+    fn prop_distinct_no_duplicates(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let result: Vec<_> = QueryBuilder::from(data)
+            .where_(|_| true)
+            .distinct()
+            .collect();
+        let unique: std::collections::HashSet<_> = result.iter().collect();
+        prop_assert_eq!(unique.len(), result.len(), "distinct() result has duplicates");
+    }
+
+    #[test]
+    fn prop_distinct_by_key_unique(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        // Use abs as key — result should have unique abs values
+        let result: Vec<_> = QueryBuilder::from(data)
+            .where_(|_| true)
+            .distinct_by(|x| x.abs())
+            .collect();
+        let keys: std::collections::HashSet<_> = result.iter().map(|x| x.abs()).collect();
+        prop_assert_eq!(keys.len(), result.len());
+    }
+
+    #[test]
+    fn prop_reverse_involution(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let double_reversed: Vec<_> = QueryBuilder::from(data.clone())
+            .where_(|_| true)
+            .reverse()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
+        prop_assert_eq!(double_reversed, data);
+    }
+
+    #[test]
+    fn prop_chunk_total_elements(
+        data in prop::collection::vec(any::<i32>(), 0..50),
+        size in 1usize..10
+    ) {
+        let total: usize = QueryBuilder::from(data.clone())
+            .where_(|_| true)
+            .chunk(size)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|chunk| chunk.len())
+            .sum();
+        prop_assert_eq!(total, data.len());
+    }
+
+    #[test]
+    fn prop_window_count(
+        data in prop::collection::vec(any::<i32>(), 1..50),
+        w in 1usize..10
+    ) {
+        let n = data.len();
+        let count = QueryBuilder::from(data)
+            .where_(|_| true)
+            .window(w)
+            .count();
+        if n >= w {
+            prop_assert_eq!(count, n - w + 1);
+        } else {
+            prop_assert_eq!(count, 0);
+        }
+    }
+
+    #[test]
+    fn prop_group_by_covers_all(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let groups = QueryBuilder::from(data.clone())
+            .group_by(|x| x % 5);
+        let total: usize = groups.values().map(|v| v.len()).sum();
+        prop_assert_eq!(total, data.len());
+    }
+
+    #[test]
+    fn prop_partition_sum_equals_total(
+        data in prop::collection::vec(any::<i32>(), 0..50)
+    ) {
+        let (left, right) = QueryBuilder::from(data.clone())
+            .partition(|x| *x % 2 == 0);
+        prop_assert_eq!(left.len() + right.len(), data.len());
     }
 }

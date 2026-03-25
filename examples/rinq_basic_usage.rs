@@ -1,10 +1,10 @@
 // examples/rinq_basic_usage.rs
-// Basic usage example for RINQ v0.1
+// Basic usage example for RINQ v2.0
 
 use rinq::QueryBuilder;
 
 fn main() {
-    println!("=== RINQ v0.1 Basic Usage Examples ===\n");
+    println!("=== RINQ v2.0 Basic Usage Examples ===\n");
 
     // Example 1: Basic filtering
     println!("Example 1: Filtering even numbers");
@@ -32,14 +32,18 @@ fn main() {
     println!("Even numbers doubled: {:?}\n", doubled);
 
     // Example 4: Sorting
-    println!("Example 4: Sorting");
+    println!("Example 4: Sorting (ascending and descending)");
     let unsorted = vec![5, 2, 8, 1, 9, 3];
-    let sorted: Vec<_> = QueryBuilder::from(unsorted.clone())
+    let sorted_asc: Vec<_> = QueryBuilder::from(unsorted.clone())
         .where_(|_| true)
         .order_by(|x| *x)
         .collect();
+    let sorted_desc: Vec<_> = QueryBuilder::from(unsorted.clone())
+        .order_by_descending(|x| *x)
+        .collect();
     println!("Unsorted: {:?}", unsorted);
-    println!("Sorted: {:?}\n", sorted);
+    println!("Ascending: {:?}", sorted_asc);
+    println!("Descending: {:?}\n", sorted_desc);
 
     // Example 5: Pagination
     println!("Example 5: Pagination");
@@ -50,41 +54,107 @@ fn main() {
         .collect();
     println!("Skip 3, take 4: {:?}\n", page);
 
-    // Example 6: Aggregations
-    println!("Example 6: Aggregations");
+    // Example 6: take_while / skip_while
+    println!("Example 6: take_while / skip_while");
+    let taken: Vec<_> = QueryBuilder::from(numbers.clone())
+        .take_while(|x| *x < 6)
+        .collect();
+    let skipped: Vec<_> = QueryBuilder::from(numbers.clone())
+        .skip_while(|x| *x < 6)
+        .collect();
+    println!("take_while < 6: {:?}", taken);
+    println!("skip_while < 6: {:?}\n", skipped);
+
+    // Example 7: flat_map
+    println!("Example 7: flat_map");
+    let nested = vec![vec![1, 2], vec![3, 4], vec![5]];
+    let flat: Vec<i32> = QueryBuilder::from(nested)
+        .flat_map(|v| v)
+        .collect();
+    println!("Flattened: {:?}\n", flat);
+
+    // Example 8: Scalar aggregations
+    println!("Example 8: Aggregations");
     let count = QueryBuilder::from(numbers.clone()).count();
-    let first = QueryBuilder::from(numbers.clone()).first();
-    let last = QueryBuilder::from(numbers.clone()).last();
-    let any_gt_5 = QueryBuilder::from(numbers.clone()).any(|x| *x > 5);
-    let all_positive = QueryBuilder::from(numbers.clone()).all(|x| *x > 0);
+    let sum: i32 = QueryBuilder::from(numbers.clone()).sum();
+    let avg = QueryBuilder::from(numbers.clone()).average().unwrap();
+    let min = QueryBuilder::from(numbers.clone()).min();
+    let max = QueryBuilder::from(numbers.clone()).max();
+    println!("Count: {count}, Sum: {sum}, Avg: {avg}, Min: {min:?}, Max: {max:?}\n");
 
-    println!("Count: {}", count);
-    println!("First: {:?}", first);
-    println!("Last: {:?}", last);
-    println!("Any > 5: {}", any_gt_5);
-    println!("All positive: {}\n", all_positive);
+    // Example 9: aggregate / aggregate_no_seed
+    println!("Example 9: aggregate / aggregate_no_seed");
+    let product = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+        .aggregate(1, |acc, x| acc * x);
+    let max_custom = QueryBuilder::from(vec![3, 1, 4, 1, 5])
+        .aggregate_no_seed(|a, b| if a > b { a } else { b });
+    println!("Product 1..5: {product}");
+    println!("Max via aggregate_no_seed: {max_custom:?}\n");
 
-    // Example 7: Type state pattern demonstration
-    println!("Example 7: Type state pattern ensures compile-time safety");
-    println!("The following operations are type-safe:");
+    // Example 10: contains / first_or_default / single
+    println!("Example 10: contains / first_or_default / single");
+    let has_7 = QueryBuilder::from(numbers.clone()).contains(&7);
+    let default: i32 = QueryBuilder::from(Vec::<i32>::new()).first_or_default();
+    let only = QueryBuilder::from(vec![42]).single();
+    println!("Contains 7: {has_7}");
+    println!("first_or_default of empty: {default}");
+    println!("single([42]): {only:?}\n");
 
-    // Valid: Initial -> Filtered
+    // Example 11: concat / union / intersect / except
+    println!("Example 11: Set operations");
+    let a = vec![1, 2, 3, 4];
+    let b = vec![3, 4, 5, 6];
+    let concatenated: Vec<_> = QueryBuilder::from(a.clone()).concat(b.clone()).collect();
+    let mut union_result: Vec<_> = QueryBuilder::from(a.clone()).union(b.clone()).collect();
+    let mut intersect_result: Vec<_> =
+        QueryBuilder::from(a.clone()).intersect(b.clone()).collect();
+    let mut except_result: Vec<_> = QueryBuilder::from(a.clone()).except(b.clone()).collect();
+    union_result.sort();
+    intersect_result.sort();
+    except_result.sort();
+    println!("a={a:?}, b={b:?}");
+    println!("concat: {concatenated:?}");
+    println!("union:  {union_result:?}");
+    println!("intersect: {intersect_result:?}");
+    println!("except: {except_result:?}\n");
+
+    // Example 12: to_hashmap / to_lookup
+    println!("Example 12: to_hashmap / to_lookup");
+    let pairs = vec![(1, "one"), (2, "two"), (3, "three")];
+    let map = QueryBuilder::from(pairs).to_hashmap(|(k, _)| *k).unwrap();
+    println!("to_hashmap[2] = {:?}", map[&2]);
+    let words = vec!["apple", "ant", "banana", "blueberry", "avocado"];
+    let lookup = QueryBuilder::from(words).to_lookup(|w| w.chars().next().unwrap());
+    println!("to_lookup['a'] = {:?}\n", lookup[&'a']);
+
+    // Example 13: Generation operators
+    println!("Example 13: Generation operators");
+    let range: Vec<i32> = QueryBuilder::range(1..=5).collect();
+    let repeated: Vec<i32> = QueryBuilder::repeat(0, 4).collect();
+    let empty: Vec<i32> = QueryBuilder::empty().collect();
+    println!("range(1..=5): {range:?}");
+    println!("repeat(0, 4): {repeated:?}");
+    println!("empty: {empty:?}\n");
+
+    // Example 14: element_at / distinct / distinct_by
+    println!("Example 14: element_at / distinct / distinct_by");
+    let third = QueryBuilder::from(numbers.clone()).element_at(2);
+    let dupes = vec![1, 2, 2, 3, 1, 4];
+    let unique: Vec<_> = QueryBuilder::from(dupes).distinct().collect();
+    println!("element_at(2) = {third:?}");
+    println!("distinct: {unique:?}\n");
+
+    // Example 15: Type state pattern demonstration
+    println!("Example 15: Type state pattern ensures compile-time safety");
     let _q1 = QueryBuilder::from(numbers.clone()).where_(|x| x % 2 == 0);
     println!("✓ Initial -> Filtered (where_)");
-
-    // Valid: Filtered -> Sorted
     let _q2 = QueryBuilder::from(numbers.clone())
         .where_(|x| x % 2 == 0)
         .order_by(|x| *x);
     println!("✓ Filtered -> Sorted (order_by)");
-
-    // Valid: Filtered -> Projected
     let _q3 = QueryBuilder::from(numbers.clone())
         .where_(|x| x % 2 == 0)
         .select(|x| x * 2);
     println!("✓ Filtered -> Projected (select)");
-
     println!("\nThe type system prevents invalid operations at compile time!");
-    println!("For example, you cannot call order_by() on Initial state.");
-    println!("This ensures query correctness before runtime.");
 }
