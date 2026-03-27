@@ -4,6 +4,7 @@
 use super::{QueryBuilder, QueryData};
 use crate::core::error::{RinqError, RinqResult};
 use crate::core::state::Filtered;
+use crate::core::state_diagnostics::HashEqBound;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -425,7 +426,7 @@ impl<T: 'static, State> QueryBuilder<T, State> {
     #[inline]
     pub fn union(self, other: impl IntoIterator<Item = T> + 'static) -> QueryBuilder<T, Filtered>
     where
-        T: Hash + Eq + Clone,
+        T: HashEqBound + Clone,
     {
         let iter: Box<dyn Iterator<Item = T>> = match self.data {
             QueryData::Iterator(iter) => iter,
@@ -467,7 +468,7 @@ impl<T: 'static, State> QueryBuilder<T, State> {
         other: impl IntoIterator<Item = T> + 'static,
     ) -> QueryBuilder<T, Filtered>
     where
-        T: Hash + Eq + Clone,
+        T: HashEqBound + Clone,
     {
         let other_set: HashSet<T> = other.into_iter().collect();
         let iter: Box<dyn Iterator<Item = T>> = match self.data {
@@ -502,7 +503,7 @@ impl<T: 'static, State> QueryBuilder<T, State> {
     #[inline]
     pub fn except(self, other: impl IntoIterator<Item = T> + 'static) -> QueryBuilder<T, Filtered>
     where
-        T: Hash + Eq + Clone,
+        T: HashEqBound + Clone,
     {
         let other_set: HashSet<T> = other.into_iter().collect();
         let iter: Box<dyn Iterator<Item = T>> = match self.data {
@@ -591,6 +592,386 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             map.entry(key).or_default().push(item);
         }
         map
+    }
+}
+
+// ── Phase 4C: quick-win operators ───────────────────────────────────────────
+
+impl<T: 'static, State> QueryBuilder<T, State> {
+    /// Filter and transform elements in one step, discarding `None` results.
+    ///
+    /// Equivalent to `.where_(|x| f(x).is_some()).select(|x| f(x).unwrap())`
+    /// but more efficient because `f` is called only once per element.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let strings = vec!["1", "two", "3", "four", "5"];
+    /// let numbers: Vec<i32> = QueryBuilder::from(strings)
+    ///     .filter_map(|s| s.parse::<i32>().ok())
+    ///     .collect();
+    /// assert_eq!(numbers, vec![1, 3, 5]);
+    /// ```
+    pub fn filter_map<U, F>(self, f: F) -> QueryBuilder<U, Filtered>
+    where
+        F: Fn(T) -> Option<U> + 'static,
+        U: 'static,
+    {
+        let iter: Box<dyn Iterator<Item = T>> = match self.data {
+            QueryData::Iterator(it) => it,
+            QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(iter.filter_map(f))),
+            _state: PhantomData,
+        }
+    }
+
+    /// Collect all elements into a `Vec<T>`.
+    ///
+    /// Shorthand for `.collect::<Vec<T>>()`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let v: Vec<i32> = QueryBuilder::from(vec![1, 2, 3]).collect_vec();
+    /// assert_eq!(v, vec![1, 2, 3]);
+    /// ```
+    pub fn collect_vec(self) -> Vec<T> {
+        self.collect::<Vec<T>>()
+    }
+
+    /// Return every `step`-th element, starting from the first.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `step` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// // Downsample sensor readings — keep every 2nd value.
+    /// let readings = vec![10, 20, 30, 40, 50];
+    /// let sampled: Vec<i32> = QueryBuilder::from(readings)
+    ///     .step_by(2)
+    ///     .collect();
+    /// assert_eq!(sampled, vec![10, 30, 50]);
+    /// ```
+    pub fn step_by(self, step: usize) -> QueryBuilder<T, Filtered> {
+        assert!(step > 0, "step_by: step must be greater than 0");
+        let iter: Box<dyn Iterator<Item = T>> = match self.data {
+            QueryData::Iterator(it) => it,
+            QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(iter.step_by(step))),
+            _state: PhantomData,
+        }
+    }
+
+    /// Repeat the sequence indefinitely.
+    ///
+    /// # Infinite loop
+    ///
+    /// `cycle` produces an infinite iterator.  Always pair it with `take` (or
+    /// another terminating operation) to avoid an infinite loop.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
+    ///     .cycle()
+    ///     .take(7)
+    ///     .collect();
+    /// assert_eq!(result, vec![1, 2, 3, 1, 2, 3, 1]);
+    /// ```
+    pub fn cycle(self) -> QueryBuilder<T, Filtered>
+    where
+        T: Clone,
+    {
+        let items: Vec<T> = match self.data {
+            QueryData::Iterator(it) => it.collect(),
+            QueryData::SortedVec { items, .. } => items,
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(CycleIter::new(items))),
+            _state: PhantomData,
+        }
+    }
+}
+
+/// Iterator adapter that cycles through a `Vec<T>` indefinitely.
+struct CycleIter<T> {
+    items: Vec<T>,
+    index: usize,
+}
+
+impl<T> CycleIter<T> {
+    fn new(items: Vec<T>) -> Self {
+        Self { items, index: 0 }
+    }
+}
+
+impl<T: Clone> Iterator for CycleIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        if self.items.is_empty() {
+            return None;
+        }
+        let item = self.items[self.index].clone();
+        self.index = (self.index + 1) % self.items.len();
+        Some(item)
+    }
+}
+
+// `map` alias on Filtered state
+impl<T: 'static> QueryBuilder<T, crate::core::state::Filtered> {
+    /// Alias for [`select`](QueryBuilder::select).
+    ///
+    /// Provided for users familiar with iterator-style APIs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let doubled: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
+    ///     .where_(|_| true)
+    ///     .map(|x| x * 2)
+    ///     .collect();
+    /// assert_eq!(doubled, vec![2, 4, 6]);
+    /// ```
+    #[inline]
+    pub fn map<U, F>(self, projection: F) -> QueryBuilder<U, crate::core::state::Projected<U>>
+    where
+        F: Fn(T) -> U + 'static,
+        U: 'static,
+    {
+        self.select(projection)
+    }
+}
+
+// `IntoQuery` trait
+
+/// Conversion trait for building a [`QueryBuilder`] directly from a collection.
+///
+/// Implement this trait (or use the provided blanket impl for `Vec<T>`) to
+/// write `collection.into_query()` instead of `QueryBuilder::from(collection)`.
+///
+/// # Examples
+///
+/// ```rust
+/// use rinq::IntoQuery;
+///
+/// let result: Vec<i32> = vec![1, 2, 3, 4, 5]
+///     .into_query()
+///     .where_(|x| x % 2 == 0)
+///     .collect();
+/// assert_eq!(result, vec![2, 4]);
+/// ```
+pub trait IntoQuery: Sized {
+    /// The element type of the resulting query.
+    type Item: 'static;
+
+    /// Convert `self` into a [`QueryBuilder`] in the `Initial` state.
+    fn into_query(self) -> QueryBuilder<Self::Item, crate::core::state::Initial>;
+}
+
+impl<T: 'static> IntoQuery for Vec<T> {
+    type Item = T;
+
+    fn into_query(self) -> QueryBuilder<T, crate::core::state::Initial> {
+        QueryBuilder::from(self)
+    }
+}
+
+// ── Phase 4B: lifecycle helpers ─────────────────────────────────────────────
+
+impl<T: Clone + 'static> QueryBuilder<T, crate::core::state::Initial> {
+    /// Create a query by cloning every element out of an `Arc<Vec<T>>`.
+    ///
+    /// This copies all N elements eagerly (O(N)), so that the resulting query
+    /// owns its data independently from the `Arc`.  The `Arc` itself is not
+    /// held by the returned query.
+    ///
+    /// # O(N) copy
+    ///
+    /// Every call clones all elements.  If you need multiple independent
+    /// queries over the same data, prefer calling this once and reusing the
+    /// resulting `Vec`, or use rayon's parallel iterator directly.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::{QueryBuilder, FilteredQuery};
+    /// use std::sync::Arc;
+    ///
+    /// #[derive(Clone, Debug, PartialEq)]
+    /// struct User { age: u32 }
+    ///
+    /// let shared: Arc<Vec<User>> = Arc::new(vec![
+    ///     User { age: 10 },
+    ///     User { age: 25 },
+    ///     User { age: 30 },
+    /// ]);
+    ///
+    /// let adults: FilteredQuery<User> = QueryBuilder::from_arc_cloned(&shared)
+    ///     .where_(|u| u.age >= 18);
+    ///
+    /// let result: Vec<User> = adults.collect();
+    /// assert_eq!(result.len(), 2);
+    /// ```
+    pub fn from_arc_cloned(arc: &std::sync::Arc<Vec<T>>) -> Self {
+        let cloned: Vec<T> = arc.as_ref().clone();
+        Self {
+            data: QueryData::Iterator(Box::new(cloned.into_iter())),
+            _state: PhantomData,
+        }
+    }
+
+    /// Create a query by cloning every element out of an `Arc<[T]>`.
+    ///
+    /// Behaves identically to [`from_arc_cloned`](Self::from_arc_cloned) but
+    /// accepts a slice-based Arc, which avoids the double indirection of
+    /// `Arc<Vec<T>>`.
+    ///
+    /// # O(N) copy
+    ///
+    /// Every call clones all elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    /// use std::sync::Arc;
+    ///
+    /// let data: Arc<[i32]> = Arc::from(vec![1, 2, 3, 4, 5]);
+    /// let result: Vec<i32> = QueryBuilder::from_arc_slice_cloned(&data)
+    ///     .where_(|x| x % 2 == 0)
+    ///     .collect();
+    /// assert_eq!(result, vec![2, 4]);
+    /// ```
+    pub fn from_arc_slice_cloned(arc: &std::sync::Arc<[T]>) -> Self {
+        let cloned: Vec<T> = arc.iter().cloned().collect();
+        Self {
+            data: QueryData::Iterator(Box::new(cloned.into_iter())),
+            _state: PhantomData,
+        }
+    }
+}
+
+impl<T: 'static, State> QueryBuilder<T, State> {
+    /// Inspect each element without consuming the query (lazy).
+    ///
+    /// `tap_each` is a thin wrapper around `inspect` that makes the intent
+    /// explicit: *observe* elements (e.g. for logging) without transforming
+    /// them.  The closure is **not** called until a terminal operation drives
+    /// the pipeline.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
+    ///     .tap_each(|x| { /* e.g. log::debug!("{}", x) */ let _ = x; })
+    ///     .collect();
+    /// assert_eq!(result, vec![1, 2, 3]);
+    /// ```
+    pub fn tap_each<F>(self, f: F) -> QueryBuilder<T, Filtered>
+    where
+        F: Fn(&T) + 'static,
+    {
+        let iter: Box<dyn Iterator<Item = T>> = match self.data {
+            QueryData::Iterator(it) => it,
+            QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(iter.inspect(f))),
+            _state: PhantomData,
+        }
+    }
+
+    /// Eagerly collect all elements, call a side-effect closure, then re-wrap
+    /// as a new `FilteredQuery`.
+    ///
+    /// ⚠ Eagerly collects all elements.  Unlike `tap_each`, the side-effect
+    /// runs *before* any further chaining; the full collection is materialised
+    /// at the point of the call.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    /// use std::sync::atomic::{AtomicUsize, Ordering};
+    /// use std::sync::Arc;
+    ///
+    /// let counter = Arc::new(AtomicUsize::new(0));
+    /// let c2 = counter.clone();
+    ///
+    /// let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
+    ///     .tap_collect(move |items| {
+    ///         c2.store(items.len(), Ordering::SeqCst);
+    ///     })
+    ///     .collect();
+    ///
+    /// assert_eq!(counter.load(Ordering::SeqCst), 3);
+    /// assert_eq!(result, vec![1, 2, 3]);
+    /// ```
+    pub fn tap_collect<F>(self, f: F) -> QueryBuilder<T, Filtered>
+    where
+        F: FnOnce(&[T]),
+    {
+        let items: Vec<T> = match self.data {
+            QueryData::Iterator(it) => it.collect(),
+            QueryData::SortedVec { items, .. } => items,
+        };
+        f(&items);
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(items.into_iter())),
+            _state: PhantomData,
+        }
+    }
+
+    /// Pass `self` through a transformation function, enabling dynamic
+    /// pipeline construction.
+    ///
+    /// `pipe` lets you apply a function `FnOnce(Self) -> QueryBuilder<T2, S2>`
+    /// inline, which is useful for:
+    ///
+    /// * Conditional filters (`if only_active { q.pipe(...) } else { q.pipe(...) }`)
+    /// * Dynamic sort keys chosen at runtime
+    /// * Delegating to an external `apply_tenant_filter` helper
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::{QueryBuilder, FilteredQuery};
+    ///
+    /// fn apply_min_age(q: QueryBuilder<u32, rinq::Initial>, min: u32) -> FilteredQuery<u32> {
+    ///     q.where_(move |&x| x >= min)
+    /// }
+    ///
+    /// let result: Vec<u32> = QueryBuilder::from(vec![5u32, 10, 15, 20])
+    ///     .pipe(|q| apply_min_age(q, 12))
+    ///     .collect();
+    /// assert_eq!(result, vec![15, 20]);
+    /// ```
+    pub fn pipe<T2, S2, F>(self, f: F) -> QueryBuilder<T2, S2>
+    where
+        F: FnOnce(Self) -> QueryBuilder<T2, S2>,
+        T2: 'static,
+    {
+        f(self)
     }
 }
 

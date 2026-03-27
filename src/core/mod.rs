@@ -4,6 +4,7 @@
 pub mod builder;
 pub mod error;
 pub mod state;
+pub mod state_diagnostics;
 pub mod try_builder;
 
 pub use builder::{QueryBuilder, Queryable};

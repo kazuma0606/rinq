@@ -1,0 +1,24 @@
+[package]
+name = "rinq-derive"
+version = "4.0.0"
+edition = "2024"
+description = "Derive macros for the rinq query engine (#[derive(Queryable)], #[derive(QueryableFrom)])"
+license = "MIT"
+repository = "https://github.com/yoshidev/rusted-ca"
+keywords = ["rinq", "query", "derive", "macro", "linq"]
+categories = ["data-structures", "development-tools"]
+readme = "README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn       = { version = "2", features = ["full"] }
+quote     = "1"
+proc-macro2 = "1"
+
+[dev-dependencies]
+rinq = { path = ".." }
+
+[package.metadata.docs.rs]
+all-features = true

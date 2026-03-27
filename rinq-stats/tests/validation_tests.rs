@@ -286,3 +286,70 @@ fn no_rules_returns_ok() {
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), vec![1, 2, 3]);
 }
+
+// ── I3: validate_if ────────────────────────────────────────────────────────
+
+#[test]
+fn validate_if_condition_false_skips_rule() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![-1_i32, -2])
+        .validate(|_| true, "dummy", "")
+        .validate_if(false, |x| *x > 0, "positive", "must be positive")
+        .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_if_condition_true_applies_rule() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, -2, 3])
+        .validate(|_| true, "dummy", "")
+        .validate_if(true, |x| *x > 0, "positive", "must be positive")
+        .collect_validated();
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].index, 1);
+}
+
+#[test]
+fn validate_if_condition_false_collect_valid_unchanged() {
+    let valid: Vec<i32> = QueryBuilder::from(vec![-1_i32, -2, -3])
+        .validate(|_| true, "dummy", "")
+        .validate_if(false, |x| *x > 0, "positive", "must be positive")
+        .collect_valid();
+    assert_eq!(valid, vec![-1, -2, -3]);
+}
+
+// ── I3: validate_with ──────────────────────────────────────────────────────
+
+#[test]
+fn validate_with_custom_message() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, -5, 3])
+        .validate(|_| true, "dummy", "")
+        .validate_with(|x| *x > 0, "positive", |x| format!("{x} is not positive"))
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message, "-5 is not positive");
+    assert_eq!(errors[0].rule, "positive");
+    assert_eq!(errors[0].index, 1);
+}
+
+#[test]
+fn validate_with_all_pass() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, 2, 3])
+        .validate(|_| true, "dummy", "")
+        .validate_with(|x| *x > 0, "positive", |x| format!("{x} is not positive"))
+        .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_with_multiple_failures_correct_messages() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![-1_i32, -2])
+        .validate(|_| true, "dummy", "")
+        .validate_with(|x| *x > 0, "check", |x| format!("value={x}"))
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors[0].message, "value=-1");
+    assert_eq!(errors[1].message, "value=-2");
+}

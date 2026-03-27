@@ -2,6 +2,7 @@
 // Module declarations + QueryData<T> enum + QueryBuilder<T, State> struct
 
 pub mod iterators;
+mod functional;
 mod initial;
 mod filtered;
 mod sorted;
@@ -11,7 +12,8 @@ mod try_ops;
 mod serde_ops;
 mod queryable;
 
-pub use queryable::{Queryable};
+pub use queryable::Queryable;
+pub use shared::IntoQuery;
 
 use std::cmp::Ordering;
 use std::marker::PhantomData;
