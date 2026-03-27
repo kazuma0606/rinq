@@ -7,7 +7,14 @@ use std::marker::PhantomData;
 #[derive(Debug, Clone, Copy)]
 pub struct Initial;
 
-/// Filtered state - query has been filtered with where_()
+/// Chainable intermediate state.
+///
+/// Despite the name, `Filtered` does **not** mean "the data has been filtered".
+/// It is the general-purpose intermediate state that most operations produce and
+/// accept.  Any operation that yields a lazily-chainable result (filtering,
+/// scanning, deduplication, zip, etc.) transitions to `Filtered` so that the
+/// next operation in the pipeline can be `select`, `order_by`, or another
+/// chainable method.
 #[derive(Debug, Clone, Copy)]
 pub struct Filtered;
 

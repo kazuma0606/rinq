@@ -16,13 +16,19 @@ overhead.
 
 ```toml
 [dependencies]
-rinq = "3"
+rinq = "4"
 
 # Optional: parallel execution (rayon) and/or serde JSON support
-rinq = { version = "3", features = ["parallel", "serde"] }
+rinq = { version = "4", features = ["parallel", "serde"] }
 
 # Statistical extensions (separate crate)
-rinq-stats = "3"
+rinq-stats = "4"
+
+# Derive macros (#[derive(Queryable)], #[derive(QueryableFrom)])
+rinq-derive = "4"
+
+# LINQ-style query! macro (experimental)
+rinq-syntax = "4"
 ```
 
 ---
@@ -87,6 +93,11 @@ Initial
 | Failure-tolerant | `try_select`, `try_where_` → `TryQueryBuilder` |
 | Parallel (`parallel`) | `into_parallel` → `ParallelQueryBuilder` |
 | Serde (`serde`) | `from_json`, `from_json_value` |
+| **v4 — Quick wins** | `filter_map`, `map`, `collect_vec`, `step_by`, `cycle` |
+| **v4 — Functional** | `scan`, `chunk_by`, `dedup`, `dedup_by`, `zip_with`, `pairwise`, `intersperse`, `min_max` |
+| **v4 — Generation** | `unfold`, `unfold_bounded` |
+| **v4 — Lifecycle** | `from_arc_cloned`, `from_arc_slice_cloned`, `tap_each`, `tap_collect`, `pipe` |
+| **v4 — Trait** | `IntoQuery` — `collection.into_query()` |
 
 ---
 
@@ -198,6 +209,128 @@ cargo test -p rinq-stats             # stats crate tests
 cargo bench --no-run                 # compile benchmarks
 cargo clippy --all-features -- -D warnings
 cargo doc --no-deps --all-features
+```
+
+---
+
+## What's New in v4.0
+
+### Type Aliases
+
+```rust
+use rinq::{InitialQuery, FilteredQuery, SortedQuery, ProjectedQuery};
+
+fn get_adults(users: Vec<u32>) -> FilteredQuery<u32> {
+    QueryBuilder::from(users).where_(|&age| age >= 18)
+}
+```
+
+### New Operators (v4)
+
+```rust
+use rinq::{QueryBuilder, IntoQuery};
+
+// IntoQuery — call .into_query() on any Vec
+let result: Vec<i32> = vec![1, 2, 3].into_query().where_(|x| *x > 1).collect();
+
+// scan — cumulative fold yielding each step
+let running: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    .scan(0, |acc, x| acc + x)
+    .collect();
+// [1, 3, 6, 10, 15]
+
+// filter_map — map + filter in one pass
+let nums: Vec<i32> = QueryBuilder::from(vec!["1", "two", "3"])
+    .filter_map(|s| s.parse::<i32>().ok())
+    .collect();
+// [1, 3]
+
+// pairwise — consecutive pairs
+let pairs: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2, 3, 4])
+    .pairwise()
+    .collect();
+// [(1,2), (2,3), (3,4)]
+
+// pred! macro — inline predicate shorthand
+use rinq::pred;
+let result: Vec<_> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    .where_(pred!(x > 2))
+    .collect();
+```
+
+### `rinq-derive` — Derive Macros
+
+```rust
+use rinq::QueryBuilder;
+use rinq_derive::{Queryable, QueryableFrom};
+
+#[derive(Debug, Clone, Queryable)]
+pub struct User {
+    pub name: String,
+    pub age: u32,
+    pub active: bool,
+    #[queryable(key)]
+    pub department: String,
+}
+
+#[derive(Debug, Clone, QueryableFrom)]
+pub struct UserList(Vec<User>);
+
+// Generated accessor functions and typed predicate module:
+use user_fields::{Active, Age};
+
+let adults: Vec<User> = QueryBuilder::from(users)
+    .where_(Age::gt(18))
+    .where_(Active::is_true())
+    .order_by(User::by_age)
+    .collect();
+
+// QueryableFrom enables .into_query():
+use rinq::IntoQuery;
+let list = UserList(users);
+let result: Vec<_> = list.into_query().where_(Age::between(20, 40)).collect();
+```
+
+### `rinq-syntax` — LINQ-style `query!` Macro *(experimental)*
+
+> The query syntax may change in future minor versions.
+
+```rust
+use rinq_syntax::query;
+
+#[derive(Debug, Clone)]
+struct User { name: String, age: u32, active: bool }
+
+let adults: Vec<String> = query! {
+    from user in users
+    where user.age >= 18
+    where user.active
+    order_by user.age
+    select user.name
+};
+```
+
+### `rinq-stats` v4 Extensions
+
+```rust
+use rinq_stats::{TimeSeriesExt, OutlierExt, ValidationExt};
+
+// Exponential Moving Average
+let ema = QueryBuilder::from(prices).exponential_moving_average(0.2);
+
+// Bollinger Bands
+let bands = QueryBuilder::from(prices).bollinger_bands(20, 2.0);
+
+// Remove outliers
+let clean = QueryBuilder::from(data).remove_outliers_zscore(2.5);
+let clean = QueryBuilder::from(data).remove_outliers_iqr();
+
+// Conditional validation / dynamic error messages
+let result = QueryBuilder::from(records)
+    .validate(|r| !r.name.is_empty(), "name_required", "name is required")
+    .validate_if(strict_mode, |r| r.value > 0.0, "positive", "must be positive")
+    .validate_with(|r| r.value < 1000.0, "range", |r| format!("{} exceeds limit", r.value))
+    .collect_validated();
 ```
 
 ---

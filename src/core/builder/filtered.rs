@@ -4,6 +4,7 @@
 use super::{QueryBuilder, QueryData};
 use super::iterators::{ChunkIterator, WindowIterator};
 use crate::core::state::{Filtered, Projected, Sorted};
+use crate::core::state_diagnostics::HashEqBound;
 use num_traits::ToPrimitive;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::Hash;
@@ -373,7 +374,7 @@ impl<T: 'static> QueryBuilder<T, Filtered> {
     #[inline]
     pub fn distinct(self) -> QueryBuilder<T, Filtered>
     where
-        T: Eq + Hash + Clone,
+        T: HashEqBound + Clone,
     {
         match self.data {
             QueryData::Iterator(iter) => {

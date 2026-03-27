@@ -592,26 +592,47 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rinq"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "criterion",
  "num-traits",
  "parking_lot",
  "proptest",
  "rayon",
+ "rinq-derive",
  "serde",
  "serde_json",
  "thiserror",
 ]
 
 [[package]]
+name = "rinq-derive"
+version = "4.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rinq",
+ "syn",
+]
+
+[[package]]
 name = "rinq-stats"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "approx",
  "log",
  "rand 0.8.5",
  "rinq",
+]
+
+[[package]]
+name = "rinq-syntax"
+version = "4.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rinq",
+ "syn",
 ]
 
 [[package]]

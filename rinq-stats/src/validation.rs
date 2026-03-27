@@ -1,5 +1,5 @@
 // rinq-stats/src/validation.rs
-// Phase B4: ValidationExt trait — chainable validation pipeline for QueryBuilder.
+// Phase B4: ValidationExt + Phase 4G I3: validate_if / validate_with extensions.
 
 use rinq::QueryBuilder;
 
@@ -18,6 +18,15 @@ impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}] {} (index {})", self.rule, self.message, self.index)
     }
+}
+
+type CheckFn<T> = Box<dyn Fn(&T) -> Option<String>>;
+
+struct ValidationRule<T> {
+    rule: String,
+    /// Returns `Some(error_message)` when the item *fails* validation,
+    /// or `None` when the item *passes*.
+    check: CheckFn<T>,
 }
 
 /// A builder that chains validation rules over a sequence of items.
@@ -41,8 +50,7 @@ impl std::fmt::Display for ValidationError {
 /// ```
 pub struct ValidationQueryBuilder<T> {
     items: Vec<T>,
-    #[allow(clippy::type_complexity)]
-    rules: Vec<(String, String, Box<dyn Fn(&T) -> bool>)>,
+    rules: Vec<ValidationRule<T>>,
 }
 
 impl<T> ValidationQueryBuilder<T> {
@@ -50,7 +58,7 @@ impl<T> ValidationQueryBuilder<T> {
         Self { items, rules: Vec::new() }
     }
 
-    /// Add another validation rule.
+    /// Add another validation rule with a fixed error message.
     ///
     /// - `rule`: short identifier used in [`ValidationError::rule`].
     /// - `message`: human-readable error text used in [`ValidationError::message`].
@@ -59,7 +67,78 @@ impl<T> ValidationQueryBuilder<T> {
     where
         F: Fn(&T) -> bool + 'static,
     {
-        self.rules.push((rule.to_owned(), message.to_owned(), Box::new(predicate)));
+        let msg = message.to_owned();
+        self.rules.push(ValidationRule {
+            rule: rule.to_owned(),
+            check: Box::new(move |item| if predicate(item) { None } else { Some(msg.clone()) }),
+        });
+        self
+    }
+
+    /// Add a validation rule that only runs when `condition` is `true`.
+    ///
+    /// When `condition` is `false` the rule is silently skipped for every item,
+    /// as if it had never been registered.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// // condition=false → the negative-check is never applied
+    /// let result = QueryBuilder::from(vec![-1_i32, -2])
+    ///     .validate(|_| true, "always_ok", "dummy")
+    ///     .validate_if(false, |x| *x > 0, "positive", "must be positive")
+    ///     .collect_validated();
+    /// assert!(result.is_ok());
+    /// ```
+    pub fn validate_if<F>(mut self, condition: bool, predicate: F, rule: &str, message: &str) -> Self
+    where
+        F: Fn(&T) -> bool + 'static,
+    {
+        if condition {
+            let msg = message.to_owned();
+            self.rules.push(ValidationRule {
+                rule: rule.to_owned(),
+                check: Box::new(move |item| {
+                    if predicate(item) { None } else { Some(msg.clone()) }
+                }),
+            });
+        }
+        self
+    }
+
+    /// Add a validation rule whose error message is generated dynamically.
+    ///
+    /// The closure `make_message` receives the violating item and returns an
+    /// owned `String` describing the specific violation.  This is useful when
+    /// the error text needs to include the item's value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// let result = QueryBuilder::from(vec![1_i32, -5, 3])
+    ///     .validate(|_| true, "dummy", "")
+    ///     .validate_with(|x| *x > 0, "positive", |x| format!("{x} is not positive"))
+    ///     .collect_validated();
+    /// let errors = result.unwrap_err();
+    /// assert_eq!(errors[0].message, "-5 is not positive");
+    /// ```
+    pub fn validate_with<F, M>(mut self, predicate: F, rule: &str, make_message: M) -> Self
+    where
+        F: Fn(&T) -> bool + 'static,
+        M: Fn(&T) -> String + 'static,
+    {
+        self.rules.push(ValidationRule {
+            rule: rule.to_owned(),
+            check: Box::new(move |item| {
+                if predicate(item) { None } else { Some(make_message(item)) }
+            }),
+        });
         self
     }
 
@@ -71,21 +150,13 @@ impl<T> ValidationQueryBuilder<T> {
     pub fn collect_validated(self) -> Result<Vec<T>, Vec<ValidationError>> {
         let mut errors: Vec<ValidationError> = Vec::new();
         for (index, item) in self.items.iter().enumerate() {
-            for (rule, message, predicate) in &self.rules {
-                if !predicate(item) {
-                    errors.push(ValidationError {
-                        rule: rule.clone(),
-                        message: message.clone(),
-                        index,
-                    });
+            for r in &self.rules {
+                if let Some(message) = (r.check)(item) {
+                    errors.push(ValidationError { rule: r.rule.clone(), message, index });
                 }
             }
         }
-        if errors.is_empty() {
-            Ok(self.items)
-        } else {
-            Err(errors)
-        }
+        if errors.is_empty() { Ok(self.items) } else { Err(errors) }
     }
 
     /// Return only the items that pass all validation rules,
@@ -93,7 +164,7 @@ impl<T> ValidationQueryBuilder<T> {
     pub fn collect_valid(self) -> Vec<T> {
         self.items
             .into_iter()
-            .filter(|item| self.rules.iter().all(|(_, _, pred)| pred(item)))
+            .filter(|item| self.rules.iter().all(|r| (r.check)(item).is_none()))
             .collect()
     }
 
@@ -107,18 +178,15 @@ impl<T> ValidationQueryBuilder<T> {
                 let item_errors: Vec<ValidationError> = self
                     .rules
                     .iter()
-                    .filter(|(_, _, pred)| !pred(&item))
-                    .map(|(rule, message, _)| ValidationError {
-                        rule: rule.clone(),
-                        message: message.clone(),
-                        index,
+                    .filter_map(|r| {
+                        (r.check)(&item).map(|msg| ValidationError {
+                            rule: r.rule.clone(),
+                            message: msg,
+                            index,
+                        })
                     })
                     .collect();
-                if item_errors.is_empty() {
-                    None
-                } else {
-                    Some((item, item_errors))
-                }
+                if item_errors.is_empty() { None } else { Some((item, item_errors)) }
             })
             .collect()
     }

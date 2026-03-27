@@ -1,10 +1,10 @@
 [workspace]
-members = [".", "rinq-stats"]
+members = [".", "rinq-stats", "rinq-derive", "rinq-syntax"]
 resolver = "2"
 
 [package]
 name = "rinq"
-version = "3.0.0"
+version = "4.0.0"
 edition = "2024"
 description = "Type-safe, zero-cost LINQ-inspired query engine for Rust — filter, sort, aggregate, window analytics, parallel execution, and statistical extensions."
 license = "MIT"
@@ -27,8 +27,9 @@ serde      = { version = "1.0",  optional = true, features = ["derive"] }
 serde_json = { version = "1.0",  optional = true }
 
 [dev-dependencies]
-proptest  = "1.0"
-criterion = "0.5"
+proptest     = "1.0"
+criterion    = "0.5"
+rinq-derive  = { path = "rinq-derive" }
 
 [package.metadata.docs.rs]
 all-features = true

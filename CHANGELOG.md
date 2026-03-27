@@ -5,6 +5,71 @@ All notable changes to RINQ (Rust Integrated Query) will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.0.0] - 2026-03-28
+
+### Breaking Changes
+
+None. All v3.0 public API is preserved.
+
+### Added
+
+#### Phase 4A — DX Enhancements
+- **Type aliases**: `InitialQuery<T>`, `FilteredQuery<T>`, `SortedQuery<T>`, `ProjectedQuery<U>` for cleaner function signatures.
+- **State-diagnostic traits**: `SupportsSelect`, `SupportsThenBy`, `SupportsOrderBy` — improve compile error messages when methods are called in the wrong state.
+- **`HashEqBound` trait**: Applied to `distinct`, `union`, `intersect`, `except` — clearer error messages when `Hash + Eq` is missing.
+- **`rinq_explain!` macro**: Debug-mode timing wrapper. No-op in release builds.
+- **`pred!` macro**: Inline predicate shorthand — `pred!(age > 18)`, `pred!(age > 18 && active == true)`.
+
+#### Phase 4B — Lifecycle Helpers
+- `QueryBuilder::from_arc_cloned(arc: Arc<Vec<T>>)` — create a query from a shared `Arc<Vec<T>>` (O(N) clone).
+- `QueryBuilder::from_arc_slice_cloned(arc: Arc<[T]>)` — same for `Arc<[T]>`.
+- `tap_each(f)` — side-effect per element without consuming the pipeline.
+- `tap_collect(f)` — eagerly collects, applies a side-effect, then rewraps. ⚠ Eagerly collects all elements.
+- `pipe(f)` — pass the entire builder to a function, enabling modular pipeline composition.
+
+#### Phase 4C — Quick-Win Operators
+- `filter_map(f)` — map + filter in a single pass; returns `QueryBuilder<U, Filtered>`.
+- `map(f)` — alias for `select` on `Filtered` state.
+- `IntoQuery` trait — `.into_query()` on `Vec<T>` and any wrapper struct via `#[derive(QueryableFrom)]`.
+- `collect_vec()` — terminal shorthand for `.collect::<Vec<_>>()`.
+- `step_by(n)` — keep every n-th element; panics on `n == 0`.
+- `cycle()` — repeat the sequence infinitely (use with `take`).
+
+#### Phase 4D — New Operators
+- `scan(seed, f)` — cumulative fold yielding each intermediate accumulator.
+- `chunk_by(key)` — group consecutive elements by key into `Vec<Vec<T>>`.
+- `dedup()` / `dedup_by(key)` — remove consecutive duplicates.
+- `zip_with(other, f)` — zip two sequences and combine with a function.
+- `pairwise()` — emit overlapping consecutive pairs `(T, T)`.
+- `intersperse(sep)` — insert a separator between every two elements.
+- `min_max()` — single-pass minimum and maximum, returns `Option<(T, T)>`.
+- `unfold(seed, f)` / `unfold_bounded(seed, f, max)` — state-machine generators.
+
+#### Phase 4E — `rinq-derive` Crate (new)
+New crate `rinq-derive = "4"` providing derive macros:
+
+- **`#[derive(Queryable)]`**: Generates `by_*` accessor functions and a typed predicate module `{snake}_fields`.
+  - `#[queryable(skip)]` — exclude a field.
+  - `#[queryable(rename = "alias")]` — rename the accessor.
+  - `#[queryable(key)]` — also generate a `default_key` accessor.
+  - Predicates by type: `Bool` → `is_true/is_false`; `String` → `eq/contains/starts_with/is_empty`; numeric → `gt/lt/eq/between`; other → `eq`.
+- **`#[derive(QueryableFrom)]`**: Implements `From<Wrapper>` and `IntoQuery` for newtype structs wrapping `Vec<T>` (tuple and named-field forms).
+
+#### Phase 4F — `rinq-syntax` Crate (new, experimental)
+New crate `rinq-syntax = "4"` providing a LINQ-style proc macro:
+
+- **`query! { ... }`** macro with clauses: `from`, `where`, `take`, `skip`, `order_by [asc|desc]`, `then_by [asc|desc]`, `select`. Always evaluates eagerly to `Vec<T>`.
+- Comma-separated sort keys: `order_by dept, age desc` expands to `order_by` + `then_by`.
+- Helpful compile errors: `where` after `order_by`, duplicate `from`.
+- Stable internal API layer via `rinq::__macro_support`.
+
+#### Phase 4G — `rinq-stats` Extensions
+- **`TimeSeriesExt` trait** (I1): `exponential_moving_average(alpha)`, `bollinger_bands(window, sigma)` — returns `Vec<BollingerPoint>`.
+- **`OutlierExt` trait** (I2): `remove_outliers_zscore(threshold)`, `remove_outliers_iqr()`.
+- **`ValidationQueryBuilder` extensions** (I3): `validate_if(condition, pred, rule, msg)` (conditional rule), `validate_with(pred, rule, make_msg)` (dynamic error message factory).
+
+---
+
 ## [v3.0.0] - 2026-03-25
 
 ### Breaking Changes
