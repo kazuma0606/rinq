@@ -5,10 +5,10 @@
 //! [`crate::QueryBuilder::into_parallel`].
 #![allow(missing_docs)]
 
-mod initial;
 mod filtered;
-mod sorted;
+mod initial;
 mod shared;
+mod sorted;
 
 use std::marker::PhantomData;
 

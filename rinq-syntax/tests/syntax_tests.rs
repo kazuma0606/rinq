@@ -15,9 +15,24 @@ struct User {
 
 fn sample_users() -> Vec<User> {
     vec![
-        User { name: "Alice".into(),   age: 28, active: true,  department: "Engineering".into() },
-        User { name: "Bob".into(),     age: 17, active: false, department: "Marketing".into()   },
-        User { name: "Charlie".into(), age: 35, active: true,  department: "Engineering".into() },
+        User {
+            name: "Alice".into(),
+            age: 28,
+            active: true,
+            department: "Engineering".into(),
+        },
+        User {
+            name: "Bob".into(),
+            age: 17,
+            active: false,
+            department: "Marketing".into(),
+        },
+        User {
+            name: "Charlie".into(),
+            age: 35,
+            active: true,
+            department: "Engineering".into(),
+        },
     ]
 }
 

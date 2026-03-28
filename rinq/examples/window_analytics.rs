@@ -14,11 +14,16 @@ fn main() {
     println!("Running sum:  {:?}", running);
 
     // moving_average (window = 3) — returns QueryBuilder<Option<f64>>
-    let ma: Vec<Option<f64>> = QueryBuilder::from(prices.clone()).moving_average(3).collect();
-    let ma_vals: Vec<String> = ma.iter().map(|v| match v {
-        Some(x) => format!("{x:.2}"),
-        None    => "—".to_owned(),
-    }).collect();
+    let ma: Vec<Option<f64>> = QueryBuilder::from(prices.clone())
+        .moving_average(3)
+        .collect();
+    let ma_vals: Vec<String> = ma
+        .iter()
+        .map(|v| match v {
+            Some(x) => format!("{x:.2}"),
+            None => "—".to_owned(),
+        })
+        .collect();
     println!("Moving avg 3: {:?}", ma_vals);
 
     // rank_by — key selector (ascending rank, returns (usize, T))

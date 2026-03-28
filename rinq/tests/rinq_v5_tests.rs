@@ -3,8 +3,8 @@
 
 use rinq::{FilteredQuery, QueryBuilder};
 use std::sync::{
-    atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc, Mutex,
+    atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 // ── 5B-1: tap_each ────────────────────────────────────────────────────────────
@@ -206,8 +206,7 @@ fn collect_vec_equals_collect() {
 
 #[test]
 fn collect_vec_empty() {
-    let result: Vec<i32> = QueryBuilder::from(vec![])
-        .collect_vec();
+    let result: Vec<i32> = QueryBuilder::from(vec![]).collect_vec();
     assert!(result.is_empty());
 }
 
@@ -215,33 +214,25 @@ fn collect_vec_empty() {
 
 #[test]
 fn pairwise_zero_elements_returns_empty() {
-    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![])
-        .pairwise()
-        .collect();
+    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![]).pairwise().collect();
     assert!(result.is_empty());
 }
 
 #[test]
 fn pairwise_one_element_returns_empty() {
-    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![42])
-        .pairwise()
-        .collect();
+    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![42]).pairwise().collect();
     assert!(result.is_empty());
 }
 
 #[test]
 fn pairwise_two_elements_returns_one_pair() {
-    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2])
-        .pairwise()
-        .collect();
+    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2]).pairwise().collect();
     assert_eq!(result, vec![(1, 2)]);
 }
 
 #[test]
 fn pairwise_three_elements_returns_two_pairs() {
-    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2, 3])
-        .pairwise()
-        .collect();
+    let result: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2, 3]).pairwise().collect();
     assert_eq!(result, vec![(1, 2), (2, 3)]);
 }
 
@@ -249,25 +240,19 @@ fn pairwise_three_elements_returns_two_pairs() {
 
 #[test]
 fn intersperse_empty_returns_empty() {
-    let result: Vec<i32> = QueryBuilder::from(vec![])
-        .intersperse(0)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![]).intersperse(0).collect();
     assert!(result.is_empty());
 }
 
 #[test]
 fn intersperse_single_element_returns_unchanged() {
-    let result: Vec<i32> = QueryBuilder::from(vec![42])
-        .intersperse(0)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![42]).intersperse(0).collect();
     assert_eq!(result, vec![42]);
 }
 
 #[test]
 fn intersperse_two_elements_has_one_separator() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2])
-        .intersperse(0)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2]).intersperse(0).collect();
     assert_eq!(result, vec![1, 0, 2]);
 }
 
@@ -292,9 +277,7 @@ fn dedup_by_all_different_returns_all() {
 #[test]
 fn dedup_by_tuple_key_groups_by_first_element() {
     let data = vec![(1, 'a'), (1, 'b'), (2, 'c'), (2, 'd'), (1, 'e')];
-    let result = QueryBuilder::from(data)
-        .dedup_by(|&(g, _)| g)
-        .collect_vec();
+    let result = QueryBuilder::from(data).dedup_by(|&(g, _)| g).collect_vec();
     assert_eq!(result, vec![(1, 'a'), (2, 'c'), (1, 'e')]);
 }
 
@@ -351,11 +334,31 @@ mod derive_integration {
 
     fn sample_products() -> Vec<Product> {
         vec![
-            Product { id: 1, price: 10.0, category: "A".into() },
-            Product { id: 2, price: 30.0, category: "B".into() },
-            Product { id: 3, price: 20.0, category: "A".into() },
-            Product { id: 4, price: 40.0, category: "B".into() },
-            Product { id: 5, price: 15.0, category: "A".into() },
+            Product {
+                id: 1,
+                price: 10.0,
+                category: "A".into(),
+            },
+            Product {
+                id: 2,
+                price: 30.0,
+                category: "B".into(),
+            },
+            Product {
+                id: 3,
+                price: 20.0,
+                category: "A".into(),
+            },
+            Product {
+                id: 4,
+                price: 40.0,
+                category: "B".into(),
+            },
+            Product {
+                id: 5,
+                price: 15.0,
+                category: "A".into(),
+            },
         ]
     }
 
@@ -363,9 +366,7 @@ mod derive_integration {
     fn derive_queryable_with_pairwise() {
         let products = sample_products();
         // pairwise で連続する商品のペア
-        let pairs: Vec<(Product, Product)> = QueryBuilder::from(products)
-            .pairwise()
-            .collect();
+        let pairs: Vec<(Product, Product)> = QueryBuilder::from(products).pairwise().collect();
         assert_eq!(pairs.len(), 4);
         assert_eq!(pairs[0].0.id, 1);
         assert_eq!(pairs[0].1.id, 2);
@@ -411,7 +412,9 @@ mod derive_integration {
         let products = sample_products();
         let result = QueryBuilder::from(products)
             .where_(|p: &Product| p.price > 15.0)
-            .tap_each(move |_| { c.fetch_add(1, std::sync::atomic::Ordering::SeqCst); })
+            .tap_each(move |_| {
+                c.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            })
             .collect_vec();
         // prices > 15: 30.0, 20.0, 40.0 = 3 items
         assert_eq!(result.len(), 3);
@@ -436,11 +439,36 @@ mod syntax_derive_integration {
 
     fn employees() -> Vec<Employee> {
         vec![
-            Employee { name: "Alice".into(),   age: 30, department: "Eng".into(),  salary: 90000.0 },
-            Employee { name: "Bob".into(),     age: 22, department: "HR".into(),   salary: 50000.0 },
-            Employee { name: "Carol".into(),   age: 35, department: "Eng".into(),  salary: 110000.0 },
-            Employee { name: "Dave".into(),    age: 28, department: "HR".into(),   salary: 55000.0 },
-            Employee { name: "Eve".into(),     age: 40, department: "Eng".into(),  salary: 120000.0 },
+            Employee {
+                name: "Alice".into(),
+                age: 30,
+                department: "Eng".into(),
+                salary: 90000.0,
+            },
+            Employee {
+                name: "Bob".into(),
+                age: 22,
+                department: "HR".into(),
+                salary: 50000.0,
+            },
+            Employee {
+                name: "Carol".into(),
+                age: 35,
+                department: "Eng".into(),
+                salary: 110000.0,
+            },
+            Employee {
+                name: "Dave".into(),
+                age: 28,
+                department: "HR".into(),
+                salary: 55000.0,
+            },
+            Employee {
+                name: "Eve".into(),
+                age: 40,
+                department: "Eng".into(),
+                salary: 120000.0,
+            },
         ]
     }
 
@@ -501,8 +529,7 @@ fn large_data_filter_sort_count() {
 #[test]
 fn large_data_group_by() {
     let data: Vec<i32> = (0..10_000).collect();
-    let groups = QueryBuilder::from(data)
-        .group_by(|&x| x % 10);
+    let groups = QueryBuilder::from(data).group_by(|&x| x % 10);
     assert_eq!(groups.len(), 10);
     for (_, v) in &groups {
         assert_eq!(v.len(), 1_000);
@@ -556,9 +583,7 @@ mod serde_tests {
 
     #[test]
     fn from_json_empty_array() {
-        let result: Vec<i64> = QueryBuilder::from_json("[]")
-            .unwrap()
-            .collect();
+        let result: Vec<i64> = QueryBuilder::from_json("[]").unwrap().collect();
         assert!(result.is_empty());
     }
 }
@@ -574,11 +599,7 @@ mod metrics_tests {
         name: &str,
         collector: Arc<MetricsCollector>,
     ) -> MetricsQueryBuilder<i32, rinq::Initial> {
-        MetricsQueryBuilder::new(
-            QueryBuilder::from(data),
-            collector,
-            name.to_string(),
-        )
+        MetricsQueryBuilder::new(QueryBuilder::from(data), collector, name.to_string())
     }
 
     #[test]
@@ -594,10 +615,9 @@ mod metrics_tests {
     #[test]
     fn metrics_records_collect_terminal() {
         let collector = Arc::new(MetricsCollector::new());
-        let _result: Vec<i32> =
-            make_metrics_query(vec![1, 2, 3], "my_query", collector.clone())
-                .where_(|_| true)
-                .collect();
+        let _result: Vec<i32> = make_metrics_query(vec![1, 2, 3], "my_query", collector.clone())
+            .where_(|_| true)
+            .collect();
         assert_eq!(collector.get("query_my_query"), Some(1));
     }
 
@@ -605,10 +625,9 @@ mod metrics_tests {
     fn metrics_multiple_queries_accumulate() {
         let collector = Arc::new(MetricsCollector::new());
         for _ in 0..5 {
-            let _: Vec<i32> =
-                make_metrics_query(vec![1, 2, 3], "repeated", collector.clone())
-                    .where_(|_| true)
-                    .collect();
+            let _: Vec<i32> = make_metrics_query(vec![1, 2, 3], "repeated", collector.clone())
+                .where_(|_| true)
+                .collect();
         }
         assert_eq!(collector.get("query_repeated"), Some(5));
     }
@@ -617,15 +636,36 @@ mod metrics_tests {
 // ── Phase 5F: JOIN operations ─────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq)]
-struct User { id: u32, name: &'static str }
+struct User {
+    id: u32,
+    name: &'static str,
+}
 
 #[derive(Clone, Debug, PartialEq)]
-struct Order { user_id: u32, amount: u32 }
+struct Order {
+    user_id: u32,
+    amount: u32,
+}
 
 #[test]
 fn inner_join_basic_matching() {
-    let users  = vec![User { id: 1, name: "Alice" }, User { id: 2, name: "Bob" }];
-    let orders = vec![Order { user_id: 1, amount: 100 }, Order { user_id: 1, amount: 200 }];
+    let users = vec![
+        User {
+            id: 1,
+            name: "Alice",
+        },
+        User { id: 2, name: "Bob" },
+    ];
+    let orders = vec![
+        Order {
+            user_id: 1,
+            amount: 100,
+        },
+        Order {
+            user_id: 1,
+            amount: 200,
+        },
+    ];
 
     let mut result: Vec<(&str, u32)> = QueryBuilder::from(users)
         .inner_join(orders, |u| u.id, |o| o.user_id)
@@ -637,8 +677,17 @@ fn inner_join_basic_matching() {
 
 #[test]
 fn inner_join_no_match_excluded() {
-    let users  = vec![User { id: 1, name: "Alice" }, User { id: 2, name: "Bob" }];
-    let orders = vec![Order { user_id: 1, amount: 50 }];
+    let users = vec![
+        User {
+            id: 1,
+            name: "Alice",
+        },
+        User { id: 2, name: "Bob" },
+    ];
+    let orders = vec![Order {
+        user_id: 1,
+        amount: 50,
+    }];
 
     let result: Vec<(&str, u32)> = QueryBuilder::from(users)
         .inner_join(orders, |u| u.id, |o| o.user_id)
@@ -650,7 +699,10 @@ fn inner_join_no_match_excluded() {
 
 #[test]
 fn inner_join_empty_right_returns_empty() {
-    let users: Vec<User> = vec![User { id: 1, name: "Alice" }];
+    let users: Vec<User> = vec![User {
+        id: 1,
+        name: "Alice",
+    }];
     let orders: Vec<Order> = vec![];
 
     let result: Vec<(&str, u32)> = QueryBuilder::from(users)
@@ -662,8 +714,14 @@ fn inner_join_empty_right_returns_empty() {
 
 #[test]
 fn left_join_all_matched() {
-    let users  = vec![User { id: 1, name: "Alice" }];
-    let orders = vec![Order { user_id: 1, amount: 99 }];
+    let users = vec![User {
+        id: 1,
+        name: "Alice",
+    }];
+    let orders = vec![Order {
+        user_id: 1,
+        amount: 99,
+    }];
 
     let result: Vec<(&str, Option<u32>)> = QueryBuilder::from(users)
         .left_join(orders, |u| u.id, |o| o.user_id)
@@ -674,15 +732,24 @@ fn left_join_all_matched() {
 
 #[test]
 fn left_join_unmatched_is_none() {
-    let users  = vec![User { id: 1, name: "Alice" }, User { id: 2, name: "Bob" }];
-    let orders = vec![Order { user_id: 1, amount: 50 }];
+    let users = vec![
+        User {
+            id: 1,
+            name: "Alice",
+        },
+        User { id: 2, name: "Bob" },
+    ];
+    let orders = vec![Order {
+        user_id: 1,
+        amount: 50,
+    }];
 
     let result: Vec<(&str, Option<u32>)> = QueryBuilder::from(users)
         .left_join(orders, |u| u.id, |o| o.user_id)
         .select(|(u, o)| (u.name, o.map(|x| x.amount)))
         .collect();
     assert_eq!(result[0], ("Alice", Some(50)));
-    assert_eq!(result[1], ("Bob",   None));
+    assert_eq!(result[1], ("Bob", None));
 }
 
 #[test]
@@ -713,21 +780,42 @@ mod join_syntax_tests {
     use rinq_syntax::query;
 
     #[derive(Clone, Debug, PartialEq)]
-    struct Dept { id: u32, name: &'static str }
+    struct Dept {
+        id: u32,
+        name: &'static str,
+    }
 
     #[derive(Clone, Debug, PartialEq)]
-    struct Emp { dept_id: u32, name: &'static str }
+    struct Emp {
+        dept_id: u32,
+        name: &'static str,
+    }
 
     #[test]
     fn query_macro_inner_join() {
         let depts = vec![
-            Dept { id: 1, name: "Engineering" },
-            Dept { id: 2, name: "Marketing"   },
+            Dept {
+                id: 1,
+                name: "Engineering",
+            },
+            Dept {
+                id: 2,
+                name: "Marketing",
+            },
         ];
         let emps = vec![
-            Emp { dept_id: 1, name: "Alice" },
-            Emp { dept_id: 1, name: "Bob"   },
-            Emp { dept_id: 2, name: "Carol" },
+            Emp {
+                dept_id: 1,
+                name: "Alice",
+            },
+            Emp {
+                dept_id: 1,
+                name: "Bob",
+            },
+            Emp {
+                dept_id: 2,
+                name: "Carol",
+            },
         ];
 
         let mut result: Vec<(&str, &str)> = query! {
@@ -736,20 +824,29 @@ mod join_syntax_tests {
             select (dept.name, emp.name)
         };
         result.sort();
-        assert_eq!(result, vec![
-            ("Engineering", "Alice"),
-            ("Engineering", "Bob"),
-            ("Marketing",   "Carol"),
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                ("Engineering", "Alice"),
+                ("Engineering", "Bob"),
+                ("Marketing", "Carol"),
+            ]
+        );
     }
 
     #[test]
     fn query_macro_left_join() {
         let depts = vec![
-            Dept { id: 1, name: "Engineering" },
-            Dept { id: 3, name: "HR"          }, // no matching emp
+            Dept {
+                id: 1,
+                name: "Engineering",
+            },
+            Dept { id: 3, name: "HR" }, // no matching emp
         ];
-        let emps = vec![Emp { dept_id: 1, name: "Alice" }];
+        let emps = vec![Emp {
+            dept_id: 1,
+            name: "Alice",
+        }];
 
         let result: Vec<(&str, Option<&str>)> = query! {
             from dept in depts
@@ -757,18 +854,30 @@ mod join_syntax_tests {
             select (dept.name, emp.map(|e| e.name))
         };
         assert_eq!(result[0], ("Engineering", Some("Alice")));
-        assert_eq!(result[1], ("HR",          None));
+        assert_eq!(result[1], ("HR", None));
     }
 
     #[test]
     fn query_macro_join_with_where() {
         let depts = vec![
-            Dept { id: 1, name: "Engineering" },
-            Dept { id: 2, name: "Marketing"   },
+            Dept {
+                id: 1,
+                name: "Engineering",
+            },
+            Dept {
+                id: 2,
+                name: "Marketing",
+            },
         ];
         let emps = vec![
-            Emp { dept_id: 1, name: "Alice" },
-            Emp { dept_id: 2, name: "Bob"   },
+            Emp {
+                dept_id: 1,
+                name: "Alice",
+            },
+            Emp {
+                dept_id: 2,
+                name: "Bob",
+            },
         ];
 
         let result: Vec<(&str, &str)> = query! {
@@ -885,9 +994,7 @@ fn nth_is_alias_for_element_at() {
 
 #[test]
 fn batch_splits_into_fixed_size_groups() {
-    let batches: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
-        .batch(2)
-        .collect();
+    let batches: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3, 4, 5]).batch(2).collect();
     assert_eq!(batches, vec![vec![1, 2], vec![3, 4], vec![5]]);
 }
 
@@ -1041,7 +1148,9 @@ fn count_by_all_match() {
 #[test]
 fn sum_by_field_extraction() {
     #[derive(Clone)]
-    struct Item { value: i32 }
+    struct Item {
+        value: i32,
+    }
     let total = QueryBuilder::from(vec![
         Item { value: 10 },
         Item { value: 20 },
@@ -1072,7 +1181,9 @@ fn average_by_empty_is_none() {
 #[test]
 fn average_by_field_extraction() {
     #[derive(Clone)]
-    struct Score { points: f64 }
+    struct Score {
+        points: f64,
+    }
     let avg = QueryBuilder::from(vec![
         Score { points: 80.0 },
         Score { points: 90.0 },
@@ -1084,10 +1195,10 @@ fn average_by_field_extraction() {
 
 #[test]
 fn reduce_is_alias_for_aggregate_no_seed() {
-    let max_reduce = QueryBuilder::from(vec![3, 1, 4, 1, 5])
-        .reduce(|a, b| if a > b { a } else { b });
-    let max_agg = QueryBuilder::from(vec![3, 1, 4, 1, 5])
-        .aggregate_no_seed(|a, b| if a > b { a } else { b });
+    let max_reduce =
+        QueryBuilder::from(vec![3, 1, 4, 1, 5]).reduce(|a, b| if a > b { a } else { b });
+    let max_agg =
+        QueryBuilder::from(vec![3, 1, 4, 1, 5]).aggregate_no_seed(|a, b| if a > b { a } else { b });
     assert_eq!(max_reduce, max_agg);
 }
 

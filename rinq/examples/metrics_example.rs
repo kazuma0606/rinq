@@ -1,7 +1,7 @@
 // rinq/examples/metrics_example.rs
 // Demonstrates MetricsQueryBuilder — per-query execution counters.
 
-use rinq::{MetricsQueryBuilder, MetricsCollector, QueryBuilder};
+use rinq::{MetricsCollector, MetricsQueryBuilder, QueryBuilder};
 use std::sync::Arc;
 
 fn main() {

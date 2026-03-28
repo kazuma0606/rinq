@@ -28,9 +28,7 @@ struct Product {
 #[test]
 fn from_json_parses_array() {
     let json = r#"[{"id":1,"name":"Alice","age":30},{"id":2,"name":"Bob","age":17}]"#;
-    let users: Vec<User> = QueryBuilder::<User, _>::from_json(json)
-        .unwrap()
-        .collect();
+    let users: Vec<User> = QueryBuilder::<User, _>::from_json(json).unwrap().collect();
     assert_eq!(users.len(), 2);
     assert_eq!(users[0].name, "Alice");
     assert_eq!(users[1].name, "Bob");
@@ -39,9 +37,7 @@ fn from_json_parses_array() {
 #[test]
 fn from_json_empty_array() {
     let json = r#"[]"#;
-    let users: Vec<User> = QueryBuilder::<User, _>::from_json(json)
-        .unwrap()
-        .collect();
+    let users: Vec<User> = QueryBuilder::<User, _>::from_json(json).unwrap().collect();
     assert!(users.is_empty());
 }
 
@@ -62,9 +58,7 @@ fn from_json_wrong_schema_returns_err() {
 #[test]
 fn from_json_i32_array() {
     let json = r#"[1, 2, 3, 4, 5]"#;
-    let nums: Vec<i32> = QueryBuilder::<i32, _>::from_json(json)
-        .unwrap()
-        .collect();
+    let nums: Vec<i32> = QueryBuilder::<i32, _>::from_json(json).unwrap().collect();
     assert_eq!(nums, vec![1, 2, 3, 4, 5]);
 }
 
@@ -154,9 +148,7 @@ fn from_json_value_basic() {
 
 #[test]
 fn from_json_value_empty() {
-    let result: Vec<_> = QueryBuilder::from_json_value(r#"[]"#)
-        .unwrap()
-        .collect();
+    let result: Vec<_> = QueryBuilder::from_json_value(r#"[]"#).unwrap().collect();
     assert!(result.is_empty());
 }
 
@@ -168,7 +160,8 @@ fn from_json_value_invalid_returns_err() {
 
 #[test]
 fn from_json_value_dynamic_field_access() {
-    let json = r#"[{"name":"Alice","score":95},{"name":"Bob","score":60},{"name":"Carol","score":80}]"#;
+    let json =
+        r#"[{"name":"Alice","score":95},{"name":"Bob","score":60},{"name":"Carol","score":80}]"#;
     let high_scorers: Vec<String> = QueryBuilder::from_json_value(json)
         .unwrap()
         .where_(|v| v["score"].as_u64().unwrap_or(0) >= 80)

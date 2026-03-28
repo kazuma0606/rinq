@@ -149,8 +149,7 @@ fn bench_ema(c: &mut Criterion) {
         let data = make_f64_data(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                QueryBuilder::from(black_box(d.clone()))
-                    .exponential_moving_average(black_box(0.1))
+                QueryBuilder::from(black_box(d.clone())).exponential_moving_average(black_box(0.1))
             })
         });
     }
@@ -181,8 +180,7 @@ fn bench_remove_outliers_zscore(c: &mut Criterion) {
         let data = make_noisy_data(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                QueryBuilder::from(black_box(d.clone()))
-                    .remove_outliers_zscore(black_box(2.0))
+                QueryBuilder::from(black_box(d.clone())).remove_outliers_zscore(black_box(2.0))
             })
         });
     }
@@ -194,9 +192,7 @@ fn bench_remove_outliers_iqr(c: &mut Criterion) {
     for &size in SIZES {
         let data = make_noisy_data(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
-            b.iter(|| {
-                QueryBuilder::from(black_box(d.clone())).remove_outliers_iqr()
-            })
+            b.iter(|| QueryBuilder::from(black_box(d.clone())).remove_outliers_iqr())
         });
     }
     group.finish();

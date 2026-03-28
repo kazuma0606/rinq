@@ -43,7 +43,10 @@ fn bench_scan_cumulative_sum(c: &mut Criterion) {
                 let mut acc = 0i32;
                 let result = d
                     .iter()
-                    .map(|&x| { acc += x; acc })
+                    .map(|&x| {
+                        acc += x;
+                        acc
+                    })
                     .collect::<Vec<_>>();
                 black_box(result);
             });
@@ -79,7 +82,9 @@ fn bench_chunk_by(c: &mut Criterion) {
                     }
                     last_key = Some(key);
                 }
-                if !current.is_empty() { result.push(current); }
+                if !current.is_empty() {
+                    result.push(current);
+                }
                 black_box(result);
             });
         });
@@ -94,18 +99,25 @@ fn bench_dedup_consecutive(c: &mut Criterion) {
         let data: Vec<i32> = (0..size as i32).flat_map(|x| vec![x, x]).collect();
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .dedup()
-                    .collect::<Vec<_>>();
+                let result = QueryBuilder::from(d.clone()).dedup().collect::<Vec<_>>();
                 black_box(result);
             });
         });
         group.bench_with_input(BenchmarkId::new("manual_dedup", size), &data, |b, d| {
             b.iter(|| {
                 let mut last: Option<i32> = None;
-                let result = d.iter().filter(|&&x| {
-                    if last == Some(x) { false } else { last = Some(x); true }
-                }).copied().collect::<Vec<_>>();
+                let result = d
+                    .iter()
+                    .filter(|&&x| {
+                        if last == Some(x) {
+                            false
+                        } else {
+                            last = Some(x);
+                            true
+                        }
+                    })
+                    .copied()
+                    .collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -118,20 +130,32 @@ fn bench_zip_with(c: &mut Criterion) {
     for size in [1_000usize, 10_000] {
         let a = ints(size);
         let b = ints(size);
-        group.bench_with_input(BenchmarkId::new("rinq", size), &(a.clone(), b.clone()), |bench, (a, b)| {
-            bench.iter(|| {
-                let result = QueryBuilder::from(a.clone())
-                    .zip_with(b.clone(), |x, y| x + y)
-                    .collect::<Vec<_>>();
-                black_box(result);
-            });
-        });
-        group.bench_with_input(BenchmarkId::new("std_zip_map", size), &(a.clone(), b.clone()), |bench, (a, b)| {
-            bench.iter(|| {
-                let result = a.iter().zip(b.iter()).map(|(x, y)| x + y).collect::<Vec<_>>();
-                black_box(result);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("rinq", size),
+            &(a.clone(), b.clone()),
+            |bench, (a, b)| {
+                bench.iter(|| {
+                    let result = QueryBuilder::from(a.clone())
+                        .zip_with(b.clone(), |x, y| x + y)
+                        .collect::<Vec<_>>();
+                    black_box(result);
+                });
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("std_zip_map", size),
+            &(a.clone(), b.clone()),
+            |bench, (a, b)| {
+                bench.iter(|| {
+                    let result = a
+                        .iter()
+                        .zip(b.iter())
+                        .map(|(x, y)| x + y)
+                        .collect::<Vec<_>>();
+                    black_box(result);
+                });
+            },
+        );
     }
     group.finish();
 }
@@ -142,18 +166,13 @@ fn bench_pairwise(c: &mut Criterion) {
         let data = ints(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .pairwise()
-                    .collect::<Vec<_>>();
+                let result = QueryBuilder::from(d.clone()).pairwise().collect::<Vec<_>>();
                 black_box(result);
             });
         });
         group.bench_with_input(BenchmarkId::new("windows_2", size), &data, |b, d| {
             b.iter(|| {
-                let result = d
-                    .windows(2)
-                    .map(|w| (w[0], w[1]))
-                    .collect::<Vec<_>>();
+                let result = d.windows(2).map(|w| (w[0], w[1])).collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -177,7 +196,9 @@ fn bench_intersperse(c: &mut Criterion) {
             b.iter(|| {
                 let mut result = Vec::with_capacity(d.len() * 2);
                 for (i, &x) in d.iter().enumerate() {
-                    if i > 0 { result.push(-1); }
+                    if i > 0 {
+                        result.push(-1);
+                    }
                     result.push(x);
                 }
                 black_box(result);
@@ -222,7 +243,8 @@ fn bench_filter_map_parse(c: &mut Criterion) {
         });
         group.bench_with_input(BenchmarkId::new("std_iter", size), &data, |b, d| {
             b.iter(|| {
-                let result = d.iter()
+                let result = d
+                    .iter()
                     .filter_map(|s| s.parse::<i32>().ok())
                     .collect::<Vec<_>>();
                 black_box(result);
@@ -238,9 +260,7 @@ fn bench_step_by_2(c: &mut Criterion) {
         let data = ints(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .step_by(2)
-                    .collect::<Vec<_>>();
+                let result = QueryBuilder::from(d.clone()).step_by(2).collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -271,7 +291,13 @@ fn bench_running_sum(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("manual_fold", size), &data, |b, d| {
             b.iter(|| {
                 let mut acc = 0i32;
-                let result = d.iter().map(|&x| { acc += x; acc }).collect::<Vec<_>>();
+                let result = d
+                    .iter()
+                    .map(|&x| {
+                        acc += x;
+                        acc
+                    })
+                    .collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -293,10 +319,13 @@ fn bench_moving_average_10(c: &mut Criterion) {
         });
         group.bench_with_input(BenchmarkId::new("windows_map", size), &data, |b, d| {
             b.iter(|| {
-                let result = d.windows(10).map(|w| {
-                    let sum: f64 = w.iter().sum();
-                    Some(sum / 10.0)
-                }).collect::<Vec<_>>();
+                let result = d
+                    .windows(10)
+                    .map(|w| {
+                        let sum: f64 = w.iter().sum();
+                        Some(sum / 10.0)
+                    })
+                    .collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -334,9 +363,7 @@ fn bench_lag_1(c: &mut Criterion) {
         let data = ints(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .lag(1)
-                    .collect::<Vec<_>>();
+                let result = QueryBuilder::from(d.clone()).lag(1).collect::<Vec<_>>();
                 black_box(result);
             });
         });
@@ -357,15 +384,18 @@ fn bench_lead_1(c: &mut Criterion) {
         let data = ints(size);
         group.bench_with_input(BenchmarkId::new("rinq", size), &data, |b, d| {
             b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .lead(1)
-                    .collect::<Vec<_>>();
+                let result = QueryBuilder::from(d.clone()).lead(1).collect::<Vec<_>>();
                 black_box(result);
             });
         });
         group.bench_with_input(BenchmarkId::new("zip_shifted", size), &data, |b, d| {
             b.iter(|| {
-                let shifted = d.iter().copied().skip(1).map(Some).chain(std::iter::once(None));
+                let shifted = d
+                    .iter()
+                    .copied()
+                    .skip(1)
+                    .map(Some)
+                    .chain(std::iter::once(None));
                 let result = d.iter().copied().zip(shifted).collect::<Vec<_>>();
                 black_box(result);
             });
@@ -414,14 +444,18 @@ fn bench_tap_collect_vec(c: &mut Criterion) {
                 black_box(result);
             });
         });
-        group.bench_with_input(BenchmarkId::new("without_tap_collect", size), &data, |b, d| {
-            b.iter(|| {
-                let result = QueryBuilder::from(d.clone())
-                    .where_(|&x| x % 2 == 0)
-                    .collect::<Vec<_>>();
-                black_box(result);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("without_tap_collect", size),
+            &data,
+            |b, d| {
+                b.iter(|| {
+                    let result = QueryBuilder::from(d.clone())
+                        .where_(|&x| x % 2 == 0)
+                        .collect::<Vec<_>>();
+                    black_box(result);
+                });
+            },
+        );
     }
     group.finish();
 }
@@ -482,12 +516,9 @@ fn bench_unfold_fib_take100(c: &mut Criterion) {
     let mut group = c.benchmark_group("generation/unfold_fib_take100");
     group.bench_function("rinq_unfold_bounded", |b| {
         b.iter(|| {
-            let result = QueryBuilder::unfold_bounded(
-                (0u64, 1u64),
-                |(a, b)| Some((a, (b, a + b))),
-                100,
-            )
-            .collect::<Vec<_>>();
+            let result =
+                QueryBuilder::unfold_bounded((0u64, 1u64), |(a, b)| Some((a, (b, a + b))), 100)
+                    .collect::<Vec<_>>();
             black_box(result);
         });
     });
@@ -562,10 +593,6 @@ criterion_group!(
     bench_from_arc_cloned,
 );
 
-criterion_group!(
-    generation,
-    bench_unfold_fib_take100,
-    bench_cycle_take1000,
-);
+criterion_group!(generation, bench_unfold_fib_take100, bench_cycle_take1000,);
 
 criterion_main!(functional, window, lifecycle, generation);

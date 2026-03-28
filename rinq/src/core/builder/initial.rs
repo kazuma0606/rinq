@@ -1,8 +1,8 @@
 // src/core/builder/initial.rs
 // impl QueryBuilder<T, Initial> — both blocks
 
-use super::{QueryBuilder, QueryData};
 use super::iterators::{ChunkIterator, WindowIterator};
+use super::{QueryBuilder, QueryData};
 use crate::core::state::{Filtered, Initial, Sorted};
 use crate::core::state_diagnostics::HashEqBound;
 use num_traits::ToPrimitive;

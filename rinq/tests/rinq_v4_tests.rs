@@ -80,10 +80,7 @@ fn into_query_vec() {
 
 #[test]
 fn into_query_chained() {
-    let result: Vec<i32> = vec![5, 3, 1, 4, 2]
-        .into_query()
-        .order_by(|x| *x)
-        .collect();
+    let result: Vec<i32> = vec![5, 3, 1, 4, 2].into_query().order_by(|x| *x).collect();
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
 }
 
@@ -143,50 +140,41 @@ fn filter_map_after_chain() {
 
 #[test]
 fn step_by_1() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
-        .step_by(1)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5]).step_by(1).collect();
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
 }
 
 #[test]
 fn step_by_2() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
-        .step_by(2)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5]).step_by(2).collect();
     assert_eq!(result, vec![1, 3, 5]);
 }
 
 #[test]
 fn step_by_larger_than_len() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
-        .step_by(10)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3]).step_by(10).collect();
     assert_eq!(result, vec![1]);
 }
 
 #[test]
 fn step_by_empty() {
-    let result: Vec<i32> = QueryBuilder::from(Vec::<i32>::new())
-        .step_by(2)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(Vec::<i32>::new()).step_by(2).collect();
     assert!(result.is_empty());
 }
 
 #[test]
 #[should_panic(expected = "step must be greater than 0")]
 fn step_by_zero_panics() {
-    let _ = QueryBuilder::from(vec![1, 2, 3]).step_by(0).collect::<Vec<_>>();
+    let _ = QueryBuilder::from(vec![1, 2, 3])
+        .step_by(0)
+        .collect::<Vec<_>>();
 }
 
 // ── J6: cycle ─────────────────────────────────────────────────────────────────
 
 #[test]
 fn cycle_with_take() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
-        .cycle()
-        .take(7)
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3]).cycle().take(7).collect();
     assert_eq!(result, vec![1, 2, 3, 1, 2, 3, 1]);
 }
 
@@ -203,10 +191,7 @@ fn cycle_empty_collection() {
 fn cycle_round_robin() {
     // Simulate round-robin assignment
     let workers = vec!["A", "B", "C"];
-    let assignments: Vec<&str> = QueryBuilder::from(workers)
-        .cycle()
-        .take(7)
-        .collect();
+    let assignments: Vec<&str> = QueryBuilder::from(workers).cycle().take(7).collect();
     assert_eq!(assignments, vec!["A", "B", "C", "A", "B", "C", "A"]);
 }
 
@@ -249,25 +234,19 @@ fn scan_string_concat() {
 #[test]
 fn chunk_by_basic() {
     let data = vec![1, 1, 2, 2, 3, 1, 1];
-    let chunks: Vec<Vec<i32>> = QueryBuilder::from(data)
-        .chunk_by(|x| *x)
-        .collect();
+    let chunks: Vec<Vec<i32>> = QueryBuilder::from(data).chunk_by(|x| *x).collect();
     assert_eq!(chunks, vec![vec![1, 1], vec![2, 2], vec![3], vec![1, 1]]);
 }
 
 #[test]
 fn chunk_by_all_same() {
-    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![5, 5, 5])
-        .chunk_by(|x| *x)
-        .collect();
+    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![5, 5, 5]).chunk_by(|x| *x).collect();
     assert_eq!(chunks, vec![vec![5, 5, 5]]);
 }
 
 #[test]
 fn chunk_by_all_different() {
-    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3])
-        .chunk_by(|x| *x)
-        .collect();
+    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3]).chunk_by(|x| *x).collect();
     assert_eq!(chunks, vec![vec![1], vec![2], vec![3]]);
 }
 
@@ -281,9 +260,7 @@ fn chunk_by_empty() {
 
 #[test]
 fn chunk_by_single_element() {
-    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![42])
-        .chunk_by(|x| *x)
-        .collect();
+    let chunks: Vec<Vec<i32>> = QueryBuilder::from(vec![42]).chunk_by(|x| *x).collect();
     assert_eq!(chunks, vec![vec![42]]);
 }
 
@@ -291,18 +268,14 @@ fn chunk_by_single_element() {
 
 #[test]
 fn dedup_consecutive() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 1, 2, 3, 3, 1])
-        .dedup()
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 1, 2, 3, 3, 1]).dedup().collect();
     assert_eq!(result, vec![1, 2, 3, 1]);
 }
 
 #[test]
 fn dedup_non_consecutive_preserved() {
     // Non-consecutive duplicates stay
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 1, 2])
-        .dedup()
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 1, 2]).dedup().collect();
     assert_eq!(result, vec![1, 2, 1, 2]);
 }
 
@@ -338,9 +311,7 @@ fn dedup_by_key() {
         Item { cat: "b", val: 4 },
         Item { cat: "a", val: 5 },
     ];
-    let result: Vec<Item> = QueryBuilder::from(data)
-        .dedup_by(|x| x.cat)
-        .collect();
+    let result: Vec<Item> = QueryBuilder::from(data).dedup_by(|x| x.cat).collect();
     assert_eq!(result.len(), 3);
     assert_eq!(result[0].cat, "a");
     assert_eq!(result[1].cat, "b");
@@ -397,17 +368,13 @@ fn zip_with_type_conversion() {
 
 #[test]
 fn pairwise_basic() {
-    let pairs: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2, 3, 4])
-        .pairwise()
-        .collect();
+    let pairs: Vec<(i32, i32)> = QueryBuilder::from(vec![1, 2, 3, 4]).pairwise().collect();
     assert_eq!(pairs, vec![(1, 2), (2, 3), (3, 4)]);
 }
 
 #[test]
 fn pairwise_empty() {
-    let pairs: Vec<(i32, i32)> = QueryBuilder::from(Vec::<i32>::new())
-        .pairwise()
-        .collect();
+    let pairs: Vec<(i32, i32)> = QueryBuilder::from(Vec::<i32>::new()).pairwise().collect();
     assert!(pairs.is_empty());
 }
 
@@ -461,8 +428,7 @@ fn unfold_bounded_fibonacci() {
 #[test]
 fn unfold_bounded_respects_limit() {
     // Would be infinite, but capped at 5
-    let result: Vec<i32> =
-        QueryBuilder::unfold_bounded(0i32, |n| Some((n, n + 1)), 5).collect();
+    let result: Vec<i32> = QueryBuilder::unfold_bounded(0i32, |n| Some((n, n + 1)), 5).collect();
     assert_eq!(result, vec![0, 1, 2, 3, 4]);
 }
 

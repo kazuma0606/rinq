@@ -1,8 +1,8 @@
 // src/core/builder/sorted.rs
 // impl QueryBuilder<T, Sorted>
 
-use super::{QueryBuilder, QueryData};
 use super::iterators::{ChunkIterator, WindowIterator};
+use super::{QueryBuilder, QueryData};
 use crate::core::state::{Filtered, Sorted};
 use crate::core::state_diagnostics::HashEqBound;
 use num_traits::ToPrimitive;

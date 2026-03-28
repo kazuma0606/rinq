@@ -55,7 +55,10 @@ pub struct ValidationQueryBuilder<T> {
 
 impl<T> ValidationQueryBuilder<T> {
     pub fn new(items: Vec<T>) -> Self {
-        Self { items, rules: Vec::new() }
+        Self {
+            items,
+            rules: Vec::new(),
+        }
     }
 
     /// Add another validation rule with a fixed error message.
@@ -70,7 +73,13 @@ impl<T> ValidationQueryBuilder<T> {
         let msg = message.to_owned();
         self.rules.push(ValidationRule {
             rule: rule.to_owned(),
-            check: Box::new(move |item| if predicate(item) { None } else { Some(msg.clone()) }),
+            check: Box::new(move |item| {
+                if predicate(item) {
+                    None
+                } else {
+                    Some(msg.clone())
+                }
+            }),
         });
         self
     }
@@ -93,7 +102,13 @@ impl<T> ValidationQueryBuilder<T> {
     ///     .collect_validated();
     /// assert!(result.is_ok());
     /// ```
-    pub fn validate_if<F>(mut self, condition: bool, predicate: F, rule: &str, message: &str) -> Self
+    pub fn validate_if<F>(
+        mut self,
+        condition: bool,
+        predicate: F,
+        rule: &str,
+        message: &str,
+    ) -> Self
     where
         F: Fn(&T) -> bool + 'static,
     {
@@ -102,7 +117,11 @@ impl<T> ValidationQueryBuilder<T> {
             self.rules.push(ValidationRule {
                 rule: rule.to_owned(),
                 check: Box::new(move |item| {
-                    if predicate(item) { None } else { Some(msg.clone()) }
+                    if predicate(item) {
+                        None
+                    } else {
+                        Some(msg.clone())
+                    }
                 }),
             });
         }
@@ -136,7 +155,11 @@ impl<T> ValidationQueryBuilder<T> {
         self.rules.push(ValidationRule {
             rule: rule.to_owned(),
             check: Box::new(move |item| {
-                if predicate(item) { None } else { Some(make_message(item)) }
+                if predicate(item) {
+                    None
+                } else {
+                    Some(make_message(item))
+                }
             }),
         });
         self
@@ -152,11 +175,19 @@ impl<T> ValidationQueryBuilder<T> {
         for (index, item) in self.items.iter().enumerate() {
             for r in &self.rules {
                 if let Some(message) = (r.check)(item) {
-                    errors.push(ValidationError { rule: r.rule.clone(), message, index });
+                    errors.push(ValidationError {
+                        rule: r.rule.clone(),
+                        message,
+                        index,
+                    });
                 }
             }
         }
-        if errors.is_empty() { Ok(self.items) } else { Err(errors) }
+        if errors.is_empty() {
+            Ok(self.items)
+        } else {
+            Err(errors)
+        }
     }
 
     /// Return only the items that pass all validation rules,
@@ -186,7 +217,11 @@ impl<T> ValidationQueryBuilder<T> {
                         })
                     })
                     .collect();
-                if item_errors.is_empty() { None } else { Some((item, item_errors)) }
+                if item_errors.is_empty() {
+                    None
+                } else {
+                    Some((item, item_errors))
+                }
             })
             .collect()
     }

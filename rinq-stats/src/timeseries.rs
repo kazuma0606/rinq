@@ -175,8 +175,7 @@ impl<State: 'static> TimeSeriesExt for QueryBuilder<f64, State> {
             .zip(values.iter().skip(window - 1))
             .map(|(w, &value)| {
                 let mean = w.iter().sum::<f64>() / window as f64;
-                let variance =
-                    w.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / window as f64;
+                let variance = w.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / window as f64;
                 let std_dev = variance.sqrt();
                 BollingerPoint {
                     value,
@@ -285,6 +284,10 @@ impl<State: 'static> TimeSeriesExt for QueryBuilder<f64, State> {
             .map(|((&v, &t), &s)| if t.is_finite() { v - t - s } else { f64::NAN })
             .collect();
 
-        SeasonalDecomposition { trend, seasonal, residual }
+        SeasonalDecomposition {
+            trend,
+            seasonal,
+            residual,
+        }
     }
 }

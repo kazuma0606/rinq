@@ -35,10 +35,9 @@ fn try_select_all_fail() {
 
 #[test]
 fn try_select_empty_collection() {
-    let (ok, err): (Vec<i32>, Vec<_>) =
-        QueryBuilder::from(vec![""; 0])
-            .try_select(|s| s.parse::<i32>())
-            .collect_partitioned();
+    let (ok, err): (Vec<i32>, Vec<_>) = QueryBuilder::from(vec![""; 0])
+        .try_select(|s| s.parse::<i32>())
+        .collect_partitioned();
     assert!(ok.is_empty());
     assert!(err.is_empty());
 }
@@ -56,10 +55,9 @@ fn try_select_type_transformation() {
 #[test]
 fn try_select_preserves_ok_order() {
     // The Ok values must appear in the same order as the original input.
-    let (ok, _): (Vec<i32>, Vec<_>) =
-        QueryBuilder::from(vec!["10", "bad", "30", "bad2", "50"])
-            .try_select(|s| s.parse::<i32>())
-            .collect_partitioned();
+    let (ok, _): (Vec<i32>, Vec<_>) = QueryBuilder::from(vec!["10", "bad", "30", "bad2", "50"])
+        .try_select(|s| s.parse::<i32>())
+        .collect_partitioned();
     assert_eq!(ok, vec![10, 30, 50]);
 }
 
@@ -103,7 +101,10 @@ fn try_select_with_rinq_error() {
         })
         .collect_results();
     assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), RinqError::ExecutionError { .. }));
+    assert!(matches!(
+        result.unwrap_err(),
+        RinqError::ExecutionError { .. }
+    ));
 }
 
 // ── collect_results short-circuit verification ───────────────────────────────
@@ -111,8 +112,8 @@ fn try_select_with_rinq_error() {
 #[test]
 fn collect_results_stops_at_first_error() {
     // Use a counter to verify that items after the first Err are not processed.
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     let count = Arc::new(AtomicUsize::new(0));
     let count2 = Arc::clone(&count);
 
@@ -175,7 +176,7 @@ fn try_where_partitioned_with_errors() {
             }
         })
         .collect_partitioned();
-    assert_eq!(ok, vec![2, 4]);        // 1,3,5 dropped or erred; 2,4 kept
+    assert_eq!(ok, vec![2, 4]); // 1,3,5 dropped or erred; 2,4 kept
     assert_eq!(err, vec!["rejected: 3"]);
 }
 
@@ -192,11 +193,10 @@ fn try_where_empty_collection() {
 
 #[test]
 fn try_select_after_where_() {
-    let (ok, _): (Vec<i32>, Vec<_>) =
-        QueryBuilder::from(vec!["1", "2", "3", "4", "5"])
-            .where_(|s| s.len() == 1)
-            .try_select(|s| s.parse::<i32>())
-            .collect_partitioned();
+    let (ok, _): (Vec<i32>, Vec<_>) = QueryBuilder::from(vec!["1", "2", "3", "4", "5"])
+        .where_(|s| s.len() == 1)
+        .try_select(|s| s.parse::<i32>())
+        .collect_partitioned();
     let mut ok = ok;
     ok.sort();
     assert_eq!(ok, vec![1, 2, 3, 4, 5]);
@@ -235,7 +235,13 @@ fn try_where_after_where_() {
 fn try_select_collect_partitioned_error_count() {
     // 100 strings, every 10th is invalid
     let strings: Vec<String> = (1..=100)
-        .map(|i| if i % 10 == 0 { "x".to_string() } else { i.to_string() })
+        .map(|i| {
+            if i % 10 == 0 {
+                "x".to_string()
+            } else {
+                i.to_string()
+            }
+        })
         .collect();
     let (ok, err): (Vec<i32>, Vec<_>) = QueryBuilder::from(strings)
         .try_select(|s| s.parse::<i32>())

@@ -1,17 +1,17 @@
 // src/core/builder/mod.rs
 // Module declarations + QueryData<T> enum + QueryBuilder<T, State> struct
 
-pub mod iterators;
+mod filtered;
 mod functional;
 mod initial;
-mod filtered;
-mod sorted;
-mod shared;
-mod window;
+pub mod iterators;
 mod join;
-mod try_ops;
-mod serde_ops;
 mod queryable;
+mod serde_ops;
+mod shared;
+mod sorted;
+mod try_ops;
+mod window;
 
 pub use queryable::Queryable;
 pub use shared::IntoQuery;
@@ -34,4 +34,3 @@ pub struct QueryBuilder<T, State> {
     pub(crate) data: QueryData<T>,
     pub(crate) _state: PhantomData<State>,
 }
-

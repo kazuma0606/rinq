@@ -16,10 +16,26 @@ fn main() {
     println!("=== rinq-stats: Validation ===\n");
 
     let products = vec![
-        Product { id: 1, name: "Widget".to_owned(),  price: 9.99  },
-        Product { id: 2, name: "".to_owned(),         price: -5.0  },
-        Product { id: 3, name: "Gadget".to_owned(),   price: 250.0 },
-        Product { id: 2, name: "Duplicate".to_owned(), price: 1.0  }, // duplicate id
+        Product {
+            id: 1,
+            name: "Widget".to_owned(),
+            price: 9.99,
+        },
+        Product {
+            id: 2,
+            name: "".to_owned(),
+            price: -5.0,
+        },
+        Product {
+            id: 3,
+            name: "Gadget".to_owned(),
+            price: 250.0,
+        },
+        Product {
+            id: 2,
+            name: "Duplicate".to_owned(),
+            price: 1.0,
+        }, // duplicate id
     ];
 
     println!("Products: {:#?}\n", products);

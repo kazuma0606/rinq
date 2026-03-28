@@ -32,11 +32,36 @@ pub struct UserList(Vec<User>);
 
 fn main() {
     let users = vec![
-        User { name: "Alice".into(),   age: 28, active: true,  department: "Engineering".into() },
-        User { name: "Bob".into(),     age: 22, active: false, department: "Marketing".into()   },
-        User { name: "Charlie".into(), age: 35, active: true,  department: "Engineering".into() },
-        User { name: "Diana".into(),   age: 17, active: true,  department: "Intern".into()      },
-        User { name: "Eve".into(),     age: 42, active: true,  department: "Engineering".into() },
+        User {
+            name: "Alice".into(),
+            age: 28,
+            active: true,
+            department: "Engineering".into(),
+        },
+        User {
+            name: "Bob".into(),
+            age: 22,
+            active: false,
+            department: "Marketing".into(),
+        },
+        User {
+            name: "Charlie".into(),
+            age: 35,
+            active: true,
+            department: "Engineering".into(),
+        },
+        User {
+            name: "Diana".into(),
+            age: 17,
+            active: true,
+            department: "Intern".into(),
+        },
+        User {
+            name: "Eve".into(),
+            age: 42,
+            active: true,
+            department: "Engineering".into(),
+        },
     ];
 
     println!("=== Using typed predicates ===");
@@ -56,8 +81,7 @@ fn main() {
 
     println!("\n=== Using accessor functions directly ===");
     {
-        let groups = QueryBuilder::from(users.clone())
-            .group_by(User::by_department);
+        let groups = QueryBuilder::from(users.clone()).group_by(User::by_department);
         for (dept, members) in &groups {
             let names: Vec<_> = members.iter().map(|u| u.name.as_str()).collect();
             println!("  {}: {:?}", dept, names);

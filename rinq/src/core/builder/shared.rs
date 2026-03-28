@@ -6,11 +6,11 @@ use super::{QueryBuilder, QueryData};
 use crate::core::error::{RinqError, RinqResult};
 use crate::core::state::Filtered;
 use crate::core::state_diagnostics::HashEqBound;
+#[cfg(feature = "parallel")]
+use crate::parallel::ParallelQueryBuilder;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::marker::PhantomData;
-#[cfg(feature = "parallel")]
-use crate::parallel::ParallelQueryBuilder;
 
 // Terminal operations available in all states
 impl<T: 'static, State> QueryBuilder<T, State> {
@@ -477,9 +477,8 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
         };
         let mut seen = HashSet::new();
-        let filtered = iter.filter(move |item| {
-            other_set.contains(item) && seen.insert(item.clone())
-        });
+        let filtered =
+            iter.filter(move |item| other_set.contains(item) && seen.insert(item.clone()));
         QueryBuilder {
             data: QueryData::Iterator(Box::new(filtered)),
             _state: PhantomData,
@@ -512,9 +511,8 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
         };
         let mut seen = HashSet::new();
-        let filtered = iter.filter(move |item| {
-            !other_set.contains(item) && seen.insert(item.clone())
-        });
+        let filtered =
+            iter.filter(move |item| !other_set.contains(item) && seen.insert(item.clone()));
         QueryBuilder {
             data: QueryData::Iterator(Box::new(filtered)),
             _state: PhantomData,
@@ -1197,7 +1195,11 @@ impl<T: 'static, State> QueryBuilder<T, State> {
                 }
             }
         }
-        if count == 0 { None } else { Some(sum / count as f64) }
+        if count == 0 {
+            None
+        } else {
+            Some(sum / count as f64)
+        }
     }
 
     /// Alias for [`aggregate_no_seed`](QueryBuilder::aggregate_no_seed).
@@ -1396,9 +1398,7 @@ impl<T: 'static, State> QueryBuilder<T, State> {
     {
         match self.data {
             QueryData::Iterator(mut iter) => iter.find(|item| predicate(item)),
-            QueryData::SortedVec { items, .. } => {
-                items.into_iter().find(|item| predicate(item))
-            }
+            QueryData::SortedVec { items, .. } => items.into_iter().find(|item| predicate(item)),
         }
     }
 
@@ -1426,9 +1426,7 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             QueryData::Iterator(iter) => iter
                 .enumerate()
                 .find_map(|(i, item)| if item == *value { Some(i) } else { None }),
-            QueryData::SortedVec { items, .. } => {
-                items.iter().position(|item| item == value)
-            }
+            QueryData::SortedVec { items, .. } => items.iter().position(|item| item == value),
         }
     }
 

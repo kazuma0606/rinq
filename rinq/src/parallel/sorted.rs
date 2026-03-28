@@ -26,8 +26,15 @@ impl<T: Send + 'static> ParallelQueryBuilder<T, Sorted> {
     where
         F: Fn(&T) -> bool + Sync + Send,
     {
-        let items: Vec<T> = self.items.into_par_iter().filter(|x| predicate(x)).collect();
-        ParallelQueryBuilder { items, _state: PhantomData }
+        let items: Vec<T> = self
+            .items
+            .into_par_iter()
+            .filter(|x| predicate(x))
+            .collect();
+        ParallelQueryBuilder {
+            items,
+            _state: PhantomData,
+        }
     }
 
     /// ソート済みコレクションの各要素を並列に変換する。
@@ -51,6 +58,9 @@ impl<T: Send + 'static> ParallelQueryBuilder<T, Sorted> {
         F: Fn(T) -> U + Sync + Send,
     {
         let items: Vec<U> = self.items.into_par_iter().map(f).collect();
-        ParallelQueryBuilder { items, _state: PhantomData }
+        ParallelQueryBuilder {
+            items,
+            _state: PhantomData,
+        }
     }
 }

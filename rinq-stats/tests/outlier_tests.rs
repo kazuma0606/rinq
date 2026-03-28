@@ -5,16 +5,14 @@ use rinq_stats::OutlierExt;
 
 #[test]
 fn zscore_empty_returns_empty() {
-    let result = QueryBuilder::from(Vec::<f64>::new())
-        .remove_outliers_zscore(2.0);
+    let result = QueryBuilder::from(Vec::<f64>::new()).remove_outliers_zscore(2.0);
     assert!(result.is_empty());
 }
 
 #[test]
 fn zscore_no_outliers() {
     let values = vec![1.0_f64, 2.0, 3.0, 4.0, 5.0];
-    let result = QueryBuilder::from(values.clone())
-        .remove_outliers_zscore(3.0);
+    let result = QueryBuilder::from(values.clone()).remove_outliers_zscore(3.0);
     assert_eq!(result, values);
 }
 
@@ -39,8 +37,7 @@ fn zscore_all_identical_no_removal() {
 fn zscore_threshold_zero_removes_non_mean() {
     // threshold=0: only keep values where z-score == 0
     // [1,2,3]: mean=2, std_dev>0; only 2 has z=0
-    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .remove_outliers_zscore(0.0);
+    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).remove_outliers_zscore(0.0);
     assert_eq!(result, vec![2.0]);
 }
 
@@ -88,16 +85,14 @@ fn iqr_symmetric_distribution() {
 #[test]
 fn modified_zscore_empty_returns_empty() {
     use rinq_stats::OutlierExt;
-    let result = QueryBuilder::from(Vec::<f64>::new())
-        .remove_outliers_modified_zscore(3.5);
+    let result = QueryBuilder::from(Vec::<f64>::new()).remove_outliers_modified_zscore(3.5);
     assert!(result.is_empty());
 }
 
 #[test]
 fn modified_zscore_all_identical_no_removal() {
     use rinq_stats::OutlierExt;
-    let result = QueryBuilder::from(vec![5.0_f64, 5.0, 5.0])
-        .remove_outliers_modified_zscore(3.5);
+    let result = QueryBuilder::from(vec![5.0_f64, 5.0, 5.0]).remove_outliers_modified_zscore(3.5);
     assert_eq!(result.len(), 3);
 }
 

@@ -199,10 +199,9 @@ fn collect_valid_two_rules_all_must_pass() {
 
 #[test]
 fn collect_invalid_returns_failing_items_with_errors() {
-    let invalid: Vec<(i32, Vec<ValidationError>)> =
-        QueryBuilder::from(vec![1, -2, 3, -4])
-            .validate(|x| *x > 0, "positive", "must be positive")
-            .collect_invalid();
+    let invalid: Vec<(i32, Vec<ValidationError>)> = QueryBuilder::from(vec![1, -2, 3, -4])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .collect_invalid();
     assert_eq!(invalid.len(), 2);
     assert_eq!(invalid[0].0, -2);
     assert_eq!(invalid[0].1[0].index, 1);
@@ -212,20 +211,18 @@ fn collect_invalid_returns_failing_items_with_errors() {
 
 #[test]
 fn collect_invalid_all_pass_returns_empty() {
-    let invalid: Vec<(i32, Vec<ValidationError>)> =
-        QueryBuilder::from(vec![1, 2, 3])
-            .validate(|x| *x > 0, "positive", "must be positive")
-            .collect_invalid();
+    let invalid: Vec<(i32, Vec<ValidationError>)> = QueryBuilder::from(vec![1, 2, 3])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .collect_invalid();
     assert!(invalid.is_empty());
 }
 
 #[test]
 fn collect_invalid_item_with_multiple_rule_failures() {
-    let invalid: Vec<(i32, Vec<ValidationError>)> =
-        QueryBuilder::from(vec![-3])
-            .validate(|x| *x > 0, "positive", "must be positive")
-            .validate(|x| *x % 2 == 0, "even", "must be even")
-            .collect_invalid();
+    let invalid: Vec<(i32, Vec<ValidationError>)> = QueryBuilder::from(vec![-3])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .validate(|x| *x % 2 == 0, "even", "must be even")
+        .collect_invalid();
     assert_eq!(invalid.len(), 1);
     assert_eq!(invalid[0].1.len(), 2);
 }
@@ -235,7 +232,7 @@ fn collect_invalid_item_with_multiple_rule_failures() {
 #[test]
 fn validate_after_filter() {
     let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1, 2, 3, 4, 5, 6])
-        .where_(|x| *x % 2 == 0)  // keep evens: 2, 4, 6
+        .where_(|x| *x % 2 == 0) // keep evens: 2, 4, 6
         .validate(|x| *x < 5, "small", "must be < 5")
         .collect_validated();
     let errors = result.unwrap_err();
@@ -246,10 +243,13 @@ fn validate_after_filter() {
 
 #[test]
 fn validate_strings() {
-    let result: Result<Vec<String>, _> =
-        QueryBuilder::from(vec!["hello".to_string(), "".to_string(), "world".to_string()])
-            .validate(|s| !s.is_empty(), "non_empty", "string must not be empty")
-            .collect_validated();
+    let result: Result<Vec<String>, _> = QueryBuilder::from(vec![
+        "hello".to_string(),
+        "".to_string(),
+        "world".to_string(),
+    ])
+    .validate(|s| !s.is_empty(), "non_empty", "string must not be empty")
+    .collect_validated();
     let errors = result.unwrap_err();
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].index, 1);
@@ -263,13 +263,26 @@ fn validate_struct_fields() {
         value: f64,
     }
     let records = vec![
-        Record { name: "a".to_string(), value: 1.0 },
-        Record { name: "".to_string(), value: -1.0 },
-        Record { name: "c".to_string(), value: 3.0 },
+        Record {
+            name: "a".to_string(),
+            value: 1.0,
+        },
+        Record {
+            name: "".to_string(),
+            value: -1.0,
+        },
+        Record {
+            name: "c".to_string(),
+            value: 3.0,
+        },
     ];
     let result: Result<Vec<Record>, _> = QueryBuilder::from(records)
         .validate(|r| !r.name.is_empty(), "name_required", "name is required")
-        .validate(|r| r.value > 0.0, "positive_value", "value must be positive")
+        .validate(
+            |r| r.value > 0.0,
+            "positive_value",
+            "value must be positive",
+        )
         .collect_validated();
     let errors = result.unwrap_err();
     // index 1 fails both rules
@@ -435,23 +448,21 @@ fn validate_unique_multiple_duplicates() {
 
 #[test]
 fn validate_non_empty_all_non_empty_ok() {
-    let result: Result<Vec<String>, _> = QueryBuilder::from(vec![
-        "hello".to_owned(), "world".to_owned()
-    ])
-    .validate(|_| true, "dummy", "")
-    .validate_non_empty(|s| s.as_str(), "non_empty")
-    .collect_validated();
+    let result: Result<Vec<String>, _> =
+        QueryBuilder::from(vec!["hello".to_owned(), "world".to_owned()])
+            .validate(|_| true, "dummy", "")
+            .validate_non_empty(|s| s.as_str(), "non_empty")
+            .collect_validated();
     assert!(result.is_ok());
 }
 
 #[test]
 fn validate_non_empty_empty_string_flagged() {
-    let result: Result<Vec<String>, _> = QueryBuilder::from(vec![
-        "ok".to_owned(), "".to_owned(), "fine".to_owned()
-    ])
-    .validate(|_| true, "dummy", "")
-    .validate_non_empty(|s| s.as_str(), "non_empty")
-    .collect_validated();
+    let result: Result<Vec<String>, _> =
+        QueryBuilder::from(vec!["ok".to_owned(), "".to_owned(), "fine".to_owned()])
+            .validate(|_| true, "dummy", "")
+            .validate_non_empty(|s| s.as_str(), "non_empty")
+            .collect_validated();
     let errors = result.unwrap_err();
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].index, 1);

@@ -57,7 +57,9 @@ fn running_sum_after_sort() {
 
 #[test]
 fn running_average_basic() {
-    let result: Vec<f64> = QueryBuilder::from(vec![1, 2, 3]).running_average().collect();
+    let result: Vec<f64> = QueryBuilder::from(vec![1, 2, 3])
+        .running_average()
+        .collect();
     assert_eq!(result, vec![1.0, 1.5, 2.0]);
 }
 
@@ -133,9 +135,7 @@ fn moving_average_window_equals_len() {
 #[test]
 fn moving_average_window_larger_than_len() {
     // window > len → all None
-    let ma: Vec<Option<f64>> = QueryBuilder::from(vec![1, 2])
-        .moving_average(5)
-        .collect();
+    let ma: Vec<Option<f64>> = QueryBuilder::from(vec![1, 2]).moving_average(5).collect();
     assert_eq!(ma, vec![None, None]);
 }
 
@@ -150,7 +150,9 @@ fn moving_average_empty() {
 #[test]
 #[should_panic(expected = "window must be >= 1")]
 fn moving_average_window_zero_panics() {
-    let _: Vec<Option<f64>> = QueryBuilder::from(vec![1, 2, 3]).moving_average(0).collect();
+    let _: Vec<Option<f64>> = QueryBuilder::from(vec![1, 2, 3])
+        .moving_average(0)
+        .collect();
 }
 
 #[test]
@@ -190,9 +192,7 @@ fn rank_by_unique_values() {
 
 #[test]
 fn rank_by_all_same() {
-    let ranked: Vec<(usize, i32)> = QueryBuilder::from(vec![5, 5, 5])
-        .rank_by(|x| *x)
-        .collect();
+    let ranked: Vec<(usize, i32)> = QueryBuilder::from(vec![5, 5, 5]).rank_by(|x| *x).collect();
     // all rank 1 (tie), next would be 4 (skipped 2,3)
     assert!(ranked.iter().all(|(r, _)| *r == 1));
 }
@@ -227,9 +227,7 @@ fn rank_by_single() {
 fn rank_by_preserves_input_order() {
     // Confirm original order is preserved in output, not sorted order
     let input = vec![5, 3, 1, 4, 2];
-    let ranked: Vec<(usize, i32)> = QueryBuilder::from(input.clone())
-        .rank_by(|x| *x)
-        .collect();
+    let ranked: Vec<(usize, i32)> = QueryBuilder::from(input.clone()).rank_by(|x| *x).collect();
     // values should appear in input order
     let vals: Vec<i32> = ranked.iter().map(|(_, v)| *v).collect();
     assert_eq!(vals, input);
@@ -293,17 +291,13 @@ fn dense_rank_by_all_same() {
 
 #[test]
 fn lag_1_basic() {
-    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![10, 20, 30])
-        .lag(1)
-        .collect();
+    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![10, 20, 30]).lag(1).collect();
     assert_eq!(result, vec![(None, 10), (Some(10), 20), (Some(20), 30)]);
 }
 
 #[test]
 fn lag_2_offsets() {
-    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2, 3, 4])
-        .lag(2)
-        .collect();
+    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2, 3, 4]).lag(2).collect();
     assert_eq!(
         result,
         vec![(None, 1), (None, 2), (Some(1), 3), (Some(2), 4)]
@@ -313,21 +307,14 @@ fn lag_2_offsets() {
 #[test]
 fn lag_0_self_reference() {
     // lag(0) pairs each element with itself
-    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2, 3])
-        .lag(0)
-        .collect();
-    assert_eq!(
-        result,
-        vec![(Some(1), 1), (Some(2), 2), (Some(3), 3)]
-    );
+    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2, 3]).lag(0).collect();
+    assert_eq!(result, vec![(Some(1), 1), (Some(2), 2), (Some(3), 3)]);
 }
 
 #[test]
 fn lag_larger_than_len() {
     // All lags are None
-    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2])
-        .lag(5)
-        .collect();
+    let result: Vec<(Option<i32>, i32)> = QueryBuilder::from(vec![1, 2]).lag(5).collect();
     assert_eq!(result, vec![(None, 1), (None, 2)]);
 }
 
@@ -352,17 +339,13 @@ fn lag_then_where_() {
 
 #[test]
 fn lead_1_basic() {
-    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![10, 20, 30])
-        .lead(1)
-        .collect();
+    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![10, 20, 30]).lead(1).collect();
     assert_eq!(result, vec![(10, Some(20)), (20, Some(30)), (30, None)]);
 }
 
 #[test]
 fn lead_2_offsets() {
-    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2, 3, 4])
-        .lead(2)
-        .collect();
+    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2, 3, 4]).lead(2).collect();
     assert_eq!(
         result,
         vec![(1, Some(3)), (2, Some(4)), (3, None), (4, None)]
@@ -371,20 +354,13 @@ fn lead_2_offsets() {
 
 #[test]
 fn lead_0_self_reference() {
-    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2, 3])
-        .lead(0)
-        .collect();
-    assert_eq!(
-        result,
-        vec![(1, Some(1)), (2, Some(2)), (3, Some(3))]
-    );
+    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2, 3]).lead(0).collect();
+    assert_eq!(result, vec![(1, Some(1)), (2, Some(2)), (3, Some(3))]);
 }
 
 #[test]
 fn lead_larger_than_len() {
-    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2])
-        .lead(5)
-        .collect();
+    let result: Vec<(i32, Option<i32>)> = QueryBuilder::from(vec![1, 2]).lead(5).collect();
     assert_eq!(result, vec![(1, None), (2, None)]);
 }
 

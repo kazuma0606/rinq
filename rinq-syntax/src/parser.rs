@@ -3,8 +3,8 @@
 
 use proc_macro2::{TokenStream, TokenTree};
 use syn::{
-    parse::{Parse, ParseStream},
     Result, Token,
+    parse::{Parse, ParseStream},
 };
 
 use crate::ast::{Clause, QueryInput, SortKey};
@@ -111,7 +111,10 @@ fn parse_sort_keys(input: ParseStream) -> Result<Vec<SortKey>> {
             false
         };
 
-        keys.push(SortKey { tokens: key_tokens, desc });
+        keys.push(SortKey {
+            tokens: key_tokens,
+            desc,
+        });
 
         if input.peek(Token![,]) {
             input.parse::<Token![,]>()?;
@@ -248,6 +251,10 @@ impl Parse for QueryInput {
             }
         }
 
-        Ok(QueryInput { binding, source_tokens, clauses })
+        Ok(QueryInput {
+            binding,
+            source_tokens,
+            clauses,
+        })
     }
 }

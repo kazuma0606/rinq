@@ -5,15 +5,13 @@ use rinq_stats::TimeSeriesExt;
 
 #[test]
 fn ema_empty_returns_empty() {
-    let result = QueryBuilder::from(Vec::<f64>::new())
-        .exponential_moving_average(0.5);
+    let result = QueryBuilder::from(Vec::<f64>::new()).exponential_moving_average(0.5);
     assert!(result.is_empty());
 }
 
 #[test]
 fn ema_single_element() {
-    let result = QueryBuilder::from(vec![5.0_f64])
-        .exponential_moving_average(0.5);
+    let result = QueryBuilder::from(vec![5.0_f64]).exponential_moving_average(0.5);
     assert_eq!(result, vec![5.0]);
 }
 
@@ -21,16 +19,14 @@ fn ema_single_element() {
 fn ema_alpha_one_equals_input() {
     // alpha=1.0 means EMA = current value
     let input = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-    let result = QueryBuilder::from(input.clone())
-        .exponential_moving_average(1.0);
+    let result = QueryBuilder::from(input.clone()).exponential_moving_average(1.0);
     assert_eq!(result, input);
 }
 
 #[test]
 fn ema_alpha_half_basic() {
     // ema[0]=10, ema[1]=0.5*20+0.5*10=15, ema[2]=0.5*30+0.5*15=22.5
-    let result = QueryBuilder::from(vec![10.0_f64, 20.0, 30.0])
-        .exponential_moving_average(0.5);
+    let result = QueryBuilder::from(vec![10.0_f64, 20.0, 30.0]).exponential_moving_average(0.5);
     assert!((result[0] - 10.0).abs() < 1e-10);
     assert!((result[1] - 15.0).abs() < 1e-10);
     assert!((result[2] - 22.5).abs() < 1e-10);
@@ -52,30 +48,26 @@ fn ema_alpha_gt_one_panics() {
 
 #[test]
 fn bollinger_empty_window_returns_empty() {
-    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .bollinger_bands(0, 2.0);
+    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).bollinger_bands(0, 2.0);
     assert!(result.is_empty());
 }
 
 #[test]
 fn bollinger_window_greater_than_len_returns_empty() {
-    let result = QueryBuilder::from(vec![1.0_f64, 2.0])
-        .bollinger_bands(5, 2.0);
+    let result = QueryBuilder::from(vec![1.0_f64, 2.0]).bollinger_bands(5, 2.0);
     assert!(result.is_empty());
 }
 
 #[test]
 fn bollinger_empty_input_returns_empty() {
-    let result = QueryBuilder::from(Vec::<f64>::new())
-        .bollinger_bands(3, 2.0);
+    let result = QueryBuilder::from(Vec::<f64>::new()).bollinger_bands(3, 2.0);
     assert!(result.is_empty());
 }
 
 #[test]
 fn bollinger_window_one_std_dev_zero() {
     // window=1: each point is its own window, std_dev=0, upper=lower=middle=value
-    let result = QueryBuilder::from(vec![5.0_f64, 10.0, 15.0])
-        .bollinger_bands(1, 2.0);
+    let result = QueryBuilder::from(vec![5.0_f64, 10.0, 15.0]).bollinger_bands(1, 2.0);
     assert_eq!(result.len(), 3);
     for (p, &v) in result.iter().zip([5.0, 10.0, 15.0].iter()) {
         assert!((p.value - v).abs() < 1e-10);
@@ -89,8 +81,7 @@ fn bollinger_window_one_std_dev_zero() {
 fn bollinger_window_equals_len_single_point() {
     // [2, 4, 4, 4, 5, 5, 7, 9]: mean=5, pop std_dev=2
     let values = vec![2.0_f64, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
-    let result = QueryBuilder::from(values.clone())
-        .bollinger_bands(values.len(), 1.0);
+    let result = QueryBuilder::from(values.clone()).bollinger_bands(values.len(), 1.0);
     assert_eq!(result.len(), 1);
     assert!((result[0].middle - 5.0).abs() < 1e-10);
     assert!((result[0].upper - 7.0).abs() < 1e-10);
@@ -112,8 +103,7 @@ fn bollinger_middle_equals_rolling_mean() {
 
 #[test]
 fn sma_basic() {
-    let sma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0, 4.0, 5.0])
-        .simple_moving_average(3);
+    let sma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0, 4.0, 5.0]).simple_moving_average(3);
     assert_eq!(sma.len(), 3);
     assert!((sma[0] - 2.0).abs() < 1e-10); // (1+2+3)/3
     assert!((sma[1] - 3.0).abs() < 1e-10); // (2+3+4)/3
@@ -122,22 +112,19 @@ fn sma_basic() {
 
 #[test]
 fn sma_window_zero_returns_empty() {
-    let sma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .simple_moving_average(0);
+    let sma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).simple_moving_average(0);
     assert!(sma.is_empty());
 }
 
 #[test]
 fn sma_window_larger_than_input_returns_empty() {
-    let sma = QueryBuilder::from(vec![1.0_f64, 2.0])
-        .simple_moving_average(5);
+    let sma = QueryBuilder::from(vec![1.0_f64, 2.0]).simple_moving_average(5);
     assert!(sma.is_empty());
 }
 
 #[test]
 fn sma_window_equals_len_single_value() {
-    let sma = QueryBuilder::from(vec![2.0_f64, 4.0, 6.0])
-        .simple_moving_average(3);
+    let sma = QueryBuilder::from(vec![2.0_f64, 4.0, 6.0]).simple_moving_average(3);
     assert_eq!(sma.len(), 1);
     assert!((sma[0] - 4.0).abs() < 1e-10);
 }
@@ -147,8 +134,7 @@ fn sma_window_equals_len_single_value() {
 #[test]
 fn wma_basic() {
     // window=3, weights 1,2,3 → (1*1 + 2*2 + 3*3)/6 = 14/6
-    let wma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .weighted_moving_average(3);
+    let wma = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).weighted_moving_average(3);
     assert_eq!(wma.len(), 1);
     assert!((wma[0] - 14.0 / 6.0).abs() < 1e-10);
 }
@@ -169,8 +155,7 @@ fn wma_window_one_equals_input() {
 
 #[test]
 fn roc_basic() {
-    let roc = QueryBuilder::from(vec![100.0_f64, 110.0, 121.0])
-        .rate_of_change(1);
+    let roc = QueryBuilder::from(vec![100.0_f64, 110.0, 121.0]).rate_of_change(1);
     assert!((roc[0] - 10.0).abs() < 1e-10); // (110-100)/100*100
     assert!((roc[1] - 10.0).abs() < 1e-10); // (121-110)/110*100
 }

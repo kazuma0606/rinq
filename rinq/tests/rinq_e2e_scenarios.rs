@@ -52,15 +52,60 @@ struct SensorReading {
 
 fn sample_orders() -> Vec<Order> {
     vec![
-        Order { product_id: 1, category: "Electronics", amount: 299.99, is_shipped: true  },
-        Order { product_id: 2, category: "Books",       amount:  19.99, is_shipped: true  },
-        Order { product_id: 3, category: "Electronics", amount: 499.99, is_shipped: false }, // 未発送
-        Order { product_id: 4, category: "Clothing",    amount:  59.99, is_shipped: true  },
-        Order { product_id: 5, category: "Books",       amount:  14.99, is_shipped: true  },
-        Order { product_id: 6, category: "Electronics", amount: 899.99, is_shipped: true  },
-        Order { product_id: 7, category: "Clothing",    amount:  89.99, is_shipped: true  },
-        Order { product_id: 8, category: "Books",       amount:  24.99, is_shipped: false }, // 未発送
-        Order { product_id: 9, category: "Electronics", amount: 149.99, is_shipped: true  },
+        Order {
+            product_id: 1,
+            category: "Electronics",
+            amount: 299.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 2,
+            category: "Books",
+            amount: 19.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 3,
+            category: "Electronics",
+            amount: 499.99,
+            is_shipped: false,
+        }, // 未発送
+        Order {
+            product_id: 4,
+            category: "Clothing",
+            amount: 59.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 5,
+            category: "Books",
+            amount: 14.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 6,
+            category: "Electronics",
+            amount: 899.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 7,
+            category: "Clothing",
+            amount: 89.99,
+            is_shipped: true,
+        },
+        Order {
+            product_id: 8,
+            category: "Books",
+            amount: 24.99,
+            is_shipped: false,
+        }, // 未発送
+        Order {
+            product_id: 9,
+            category: "Electronics",
+            amount: 149.99,
+            is_shipped: true,
+        },
     ]
 }
 
@@ -80,13 +125,11 @@ fn scenario1_sales_analysis_pipeline() {
     // Books: 19.99 + 14.99 = 34.98（未発送の24.99は除外）
     // Clothing: 59.99 + 89.99 = 149.98
     assert!((category_totals["Electronics"] - 1349.97).abs() < 0.01);
-    assert!((category_totals["Books"]       -   34.98).abs() < 0.01);
-    assert!((category_totals["Clothing"]    -  149.98).abs() < 0.01);
+    assert!((category_totals["Books"] - 34.98).abs() < 0.01);
+    assert!((category_totals["Clothing"] - 149.98).abs() < 0.01);
 
     // 未発送オーダーが除外されていることを確認
-    let shipped_count = QueryBuilder::from(orders)
-        .where_(|o| o.is_shipped)
-        .count();
+    let shipped_count = QueryBuilder::from(orders).where_(|o| o.is_shipped).count();
     assert_eq!(shipped_count, 7);
 
     // 全カテゴリの売上合計が発送済みオーダーの合計と一致すること
@@ -128,14 +171,46 @@ fn scenario1_top_categories_by_revenue() {
 
 fn sample_logs() -> Vec<LogEntry> {
     vec![
-        LogEntry { level: LogLevel::Info,  message: "Server started",        user_id: None      },
-        LogEntry { level: LogLevel::Error, message: "DB connection failed",   user_id: Some(42)  },
-        LogEntry { level: LogLevel::Warn,  message: "Slow query detected",    user_id: Some(7)   },
-        LogEntry { level: LogLevel::Error, message: "DB connection failed",   user_id: Some(99)  }, // 重複メッセージ
-        LogEntry { level: LogLevel::Info,  message: "Request processed",      user_id: Some(42)  },
-        LogEntry { level: LogLevel::Error, message: "Null pointer exception", user_id: None      },
-        LogEntry { level: LogLevel::Warn,  message: "Memory usage high",      user_id: Some(7)   },
-        LogEntry { level: LogLevel::Info,  message: "Cache hit",              user_id: None      },
+        LogEntry {
+            level: LogLevel::Info,
+            message: "Server started",
+            user_id: None,
+        },
+        LogEntry {
+            level: LogLevel::Error,
+            message: "DB connection failed",
+            user_id: Some(42),
+        },
+        LogEntry {
+            level: LogLevel::Warn,
+            message: "Slow query detected",
+            user_id: Some(7),
+        },
+        LogEntry {
+            level: LogLevel::Error,
+            message: "DB connection failed",
+            user_id: Some(99),
+        }, // 重複メッセージ
+        LogEntry {
+            level: LogLevel::Info,
+            message: "Request processed",
+            user_id: Some(42),
+        },
+        LogEntry {
+            level: LogLevel::Error,
+            message: "Null pointer exception",
+            user_id: None,
+        },
+        LogEntry {
+            level: LogLevel::Warn,
+            message: "Memory usage high",
+            user_id: Some(7),
+        },
+        LogEntry {
+            level: LogLevel::Info,
+            message: "Cache hit",
+            user_id: None,
+        },
     ]
 }
 
@@ -146,13 +221,10 @@ fn scenario2_log_analysis_pipeline() {
     // ERROR / WARN のみのレベル別カウント
     let level_counts: HashMap<String, usize> = QueryBuilder::from(logs.clone())
         .where_(|l| matches!(l.level, LogLevel::Error | LogLevel::Warn))
-        .group_by_aggregate(
-            |l| format!("{:?}", l.level),
-            |group| group.len(),
-        );
+        .group_by_aggregate(|l| format!("{:?}", l.level), |group| group.len());
 
     assert_eq!(level_counts["Error"], 3);
-    assert_eq!(level_counts["Warn"],  2);
+    assert_eq!(level_counts["Warn"], 2);
     assert!(!level_counts.contains_key("Info"));
 
     // 重複メッセージを除いた ERROR 一覧
@@ -213,7 +285,10 @@ fn scenario3_inventory_set_operations() {
     assert_eq!(union_result.len(), 9); // 1〜9
 
     // intersect + a_only + b_only の合計 = union の要素数
-    assert_eq!(common.len() + a_only.len() + b_only.len(), union_result.len());
+    assert_eq!(
+        common.len() + a_only.len() + b_only.len(),
+        union_result.len()
+    );
 
     // concat + distinct で union と同じ結果
     let mut concat_dedup: Vec<u32> = QueryBuilder::from(warehouse_a)
@@ -231,9 +306,9 @@ fn scenario3_inventory_set_operations() {
 fn sample_users() -> Vec<User> {
     (0..50u32)
         .map(|i| User {
-            id:     i,
-            name:   if i % 2 == 0 { "Alice" } else { "Bob" }, // 簡略化
-            age:    20 + (i % 30),
+            id: i,
+            name: if i % 2 == 0 { "Alice" } else { "Bob" }, // 簡略化
+            age: 20 + (i % 30),
             active: i % 5 != 0, // 5の倍数は非アクティブ
         })
         .collect()
@@ -297,16 +372,46 @@ fn scenario4_pagination() {
 
 fn sample_sensor_readings() -> Vec<SensorReading> {
     vec![
-        SensorReading { sensor_id: 1, temperature: 22.5 },
-        SensorReading { sensor_id: 2, temperature: 19.0 },
-        SensorReading { sensor_id: 1, temperature: 23.0 },
-        SensorReading { sensor_id: 3, temperature: 150.0 }, // 異常値
-        SensorReading { sensor_id: 2, temperature: 18.5 },
-        SensorReading { sensor_id: 1, temperature: -60.0 }, // 異常値
-        SensorReading { sensor_id: 3, temperature: 21.0 },
-        SensorReading { sensor_id: 2, temperature: 20.0 },
-        SensorReading { sensor_id: 1, temperature: 24.0 },
-        SensorReading { sensor_id: 3, temperature: 22.0 },
+        SensorReading {
+            sensor_id: 1,
+            temperature: 22.5,
+        },
+        SensorReading {
+            sensor_id: 2,
+            temperature: 19.0,
+        },
+        SensorReading {
+            sensor_id: 1,
+            temperature: 23.0,
+        },
+        SensorReading {
+            sensor_id: 3,
+            temperature: 150.0,
+        }, // 異常値
+        SensorReading {
+            sensor_id: 2,
+            temperature: 18.5,
+        },
+        SensorReading {
+            sensor_id: 1,
+            temperature: -60.0,
+        }, // 異常値
+        SensorReading {
+            sensor_id: 3,
+            temperature: 21.0,
+        },
+        SensorReading {
+            sensor_id: 2,
+            temperature: 20.0,
+        },
+        SensorReading {
+            sensor_id: 1,
+            temperature: 24.0,
+        },
+        SensorReading {
+            sensor_id: 3,
+            temperature: 22.0,
+        },
     ]
 }
 
@@ -326,32 +431,29 @@ fn scenario5_sensor_statistics() {
     assert!(max_temp.unwrap().temperature <= 100.0);
 
     // センサー別の観測数
-    let sensor_counts: HashMap<u8, usize> = QueryBuilder::from(valid.clone())
-        .group_by_aggregate(
-            |r| r.sensor_id,
-            |group| group.len(),
-        );
+    let sensor_counts: HashMap<u8, usize> =
+        QueryBuilder::from(valid.clone()).group_by_aggregate(|r| r.sensor_id, |group| group.len());
 
     assert_eq!(sensor_counts[&1], 3); // 22.5, 23.0, 24.0（-60.0は除外）
     assert_eq!(sensor_counts[&2], 3); // 19.0, 18.5, 20.0
     assert_eq!(sensor_counts[&3], 2); // 21.0, 22.0（150.0は除外）
 
     // センサー別平均温度
-    let sensor_avgs: HashMap<u8, f64> = QueryBuilder::from(valid.clone())
-        .group_by_aggregate(
-            |r| r.sensor_id,
-            |group| {
-                let sum: f64 = group.iter().map(|r| r.temperature).sum();
-                sum / group.len() as f64
-            },
-        );
+    let sensor_avgs: HashMap<u8, f64> = QueryBuilder::from(valid.clone()).group_by_aggregate(
+        |r| r.sensor_id,
+        |group| {
+            let sum: f64 = group.iter().map(|r| r.temperature).sum();
+            sum / group.len() as f64
+        },
+    );
 
     // センサー1の平均: (22.5 + 23.0 + 24.0) / 3 = 23.1666...
     assert!((sensor_avgs[&1] - (22.5 + 23.0 + 24.0) / 3.0).abs() < 1e-9);
 
     // 最も観測数が多いセンサー
-    let max_count_sensor = QueryBuilder::from(sensor_counts.clone().into_iter().collect::<Vec<_>>())
-        .max_by(|(_, count)| *count);
+    let max_count_sensor =
+        QueryBuilder::from(sensor_counts.clone().into_iter().collect::<Vec<_>>())
+            .max_by(|(_, count)| *count);
     assert!(max_count_sensor.is_some());
 
     // 全センサーの総観測数 = valid の件数
@@ -365,15 +467,15 @@ fn scenario5_sensor_statistics() {
 
 #[test]
 fn scenario6_time_series_comparison() {
-    let current_year  = vec![110.0, 95.0, 130.0, 120.0, 140.0, 100.0];
+    let current_year = vec![110.0, 95.0, 130.0, 120.0, 140.0, 100.0];
     let previous_year = vec![100.0, 100.0, 100.0, 100.0, 100.0, 100.0];
 
     // 前年比を計算（current / previous）
     // enumerate → where_ → select の順（select後はProjected状態なのでenumerateが使えない）
     let growth_rates: Vec<(usize, f64)> = QueryBuilder::from(current_year.clone())
         .zip(previous_year.clone())
-        .enumerate()                                              // (usize, (f64, f64))
-        .where_(|(_, (cur, prev))| cur / prev >= 1.1)            // 10%以上成長した月
+        .enumerate() // (usize, (f64, f64))
+        .where_(|(_, (cur, prev))| cur / prev >= 1.1) // 10%以上成長した月
         .select(|(idx, (cur, prev))| (idx, cur / prev))
         .collect();
 
@@ -386,11 +488,9 @@ fn scenario6_time_series_comparison() {
     assert_eq!(first_month_idx, 0); // 110/100=1.1 が最初に該当
 
     // zip が短い方で終了すること
-    let longer  = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let longer = vec![1.0, 2.0, 3.0, 4.0, 5.0];
     let shorter = vec![10.0, 20.0, 30.0];
-    let zipped: Vec<(f64, f64)> = QueryBuilder::from(longer)
-        .zip(shorter)
-        .collect();
+    let zipped: Vec<(f64, f64)> = QueryBuilder::from(longer).zip(shorter).collect();
     assert_eq!(zipped.len(), 3);
 
     // 前年比の合計が手動計算と一致すること
@@ -490,8 +590,7 @@ fn scenario8_generation_operators() {
     assert_eq!(result_normal, result_concat);
 
     // range + aggregate で fold と同じ結果
-    let product_via_aggregate = QueryBuilder::range(1..=5i64)
-        .aggregate(1i64, |acc, x| acc * x);
+    let product_via_aggregate = QueryBuilder::range(1..=5i64).aggregate(1i64, |acc, x| acc * x);
     assert_eq!(product_via_aggregate, 120); // 5! = 120
 
     // range + filter + count
@@ -527,24 +626,20 @@ fn scenario_bonus_sequence_operations() {
 
     // chunk: 合計要素数が保存されること
     let data: Vec<i32> = (1..=10).collect();
-    let chunks: Vec<Vec<i32>> = QueryBuilder::from(data.clone())
-        .chunk(3)
-        .collect();
+    let chunks: Vec<Vec<i32>> = QueryBuilder::from(data.clone()).chunk(3).collect();
     assert_eq!(chunks.len(), 4); // [1,2,3], [4,5,6], [7,8,9], [10]
     assert_eq!(chunks.last().unwrap().len(), 1);
     let total: usize = chunks.iter().map(|c| c.len()).sum();
     assert_eq!(total, data.len());
 
     // window: 各ウィンドウのサイズが window_size と一致すること
-    let windows: Vec<Vec<i32>> = QueryBuilder::from(data.clone())
-        .window(3)
-        .collect();
+    let windows: Vec<Vec<i32>> = QueryBuilder::from(data.clone()).window(3).collect();
     assert!(windows.iter().all(|w| w.len() == 3));
     assert_eq!(windows.len(), data.len() - 3 + 1); // 8
 
     // partition: 2つのベクタの合計が元の件数と一致
-    let (evens, odds): (Vec<i32>, Vec<i32>) = QueryBuilder::from(data.clone())
-        .partition(|x| x % 2 == 0);
+    let (evens, odds): (Vec<i32>, Vec<i32>) =
+        QueryBuilder::from(data.clone()).partition(|x| x % 2 == 0);
     assert_eq!(evens.len() + odds.len(), data.len());
     assert!(evens.iter().all(|x| x % 2 == 0));
     assert!(odds.iter().all(|x| x % 2 != 0));

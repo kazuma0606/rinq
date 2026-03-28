@@ -237,7 +237,11 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             .iter()
             .enumerate()
             .map(|(i, x)| {
-                let prev = if i >= n { Some(items[i - n].clone()) } else { None };
+                let prev = if i >= n {
+                    Some(items[i - n].clone())
+                } else {
+                    None
+                };
                 (prev, x.clone())
             })
             .collect();
@@ -274,7 +278,11 @@ impl<T: 'static, State> QueryBuilder<T, State> {
             .iter()
             .enumerate()
             .map(|(i, x)| {
-                let next = if i + n < len { Some(items[i + n].clone()) } else { None };
+                let next = if i + n < len {
+                    Some(items[i + n].clone())
+                } else {
+                    None
+                };
                 (x.clone(), next)
             })
             .collect();

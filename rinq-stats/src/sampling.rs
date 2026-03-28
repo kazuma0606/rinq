@@ -43,7 +43,7 @@ pub trait SamplingExt<T> {
     /// assert!(sample.len() <= 10);
     /// ```
     fn sample_fraction<R: Rng>(self, rng: &mut R, fraction: f64)
-        -> QueryBuilder<T, rinq::Filtered>;
+    -> QueryBuilder<T, rinq::Filtered>;
 
     /// Sample exactly `k` elements (or all elements if `k ≥ N`) using
     /// Vitter's Algorithm R (reservoir sampling).
@@ -170,7 +170,9 @@ impl<T: 'static, State: 'static> SamplingExt<T> for QueryBuilder<T, State> {
         if items.is_empty() {
             return vec![];
         }
-        (0..n).map(|_| items[rng.gen_range(0..items.len())].clone()).collect()
+        (0..n)
+            .map(|_| items[rng.gen_range(0..items.len())].clone())
+            .collect()
     }
 }
 

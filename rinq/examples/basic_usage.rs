@@ -68,9 +68,7 @@ fn main() {
     // Example 7: flat_map
     println!("Example 7: flat_map");
     let nested = vec![vec![1, 2], vec![3, 4], vec![5]];
-    let flat: Vec<i32> = QueryBuilder::from(nested)
-        .flat_map(|v| v)
-        .collect();
+    let flat: Vec<i32> = QueryBuilder::from(nested).flat_map(|v| v).collect();
     println!("Flattened: {:?}\n", flat);
 
     // Example 8: Scalar aggregations
@@ -84,10 +82,9 @@ fn main() {
 
     // Example 9: aggregate / aggregate_no_seed
     println!("Example 9: aggregate / aggregate_no_seed");
-    let product = QueryBuilder::from(vec![1, 2, 3, 4, 5])
-        .aggregate(1, |acc, x| acc * x);
-    let max_custom = QueryBuilder::from(vec![3, 1, 4, 1, 5])
-        .aggregate_no_seed(|a, b| if a > b { a } else { b });
+    let product = QueryBuilder::from(vec![1, 2, 3, 4, 5]).aggregate(1, |acc, x| acc * x);
+    let max_custom =
+        QueryBuilder::from(vec![3, 1, 4, 1, 5]).aggregate_no_seed(|a, b| if a > b { a } else { b });
     println!("Product 1..5: {product}");
     println!("Max via aggregate_no_seed: {max_custom:?}\n");
 
@@ -106,8 +103,7 @@ fn main() {
     let b = vec![3, 4, 5, 6];
     let concatenated: Vec<_> = QueryBuilder::from(a.clone()).concat(b.clone()).collect();
     let mut union_result: Vec<_> = QueryBuilder::from(a.clone()).union(b.clone()).collect();
-    let mut intersect_result: Vec<_> =
-        QueryBuilder::from(a.clone()).intersect(b.clone()).collect();
+    let mut intersect_result: Vec<_> = QueryBuilder::from(a.clone()).intersect(b.clone()).collect();
     let mut except_result: Vec<_> = QueryBuilder::from(a.clone()).except(b.clone()).collect();
     union_result.sort();
     intersect_result.sort();

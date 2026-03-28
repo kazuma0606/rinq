@@ -5,9 +5,7 @@
 [![docs.rs](https://docs.rs/rinq/badge.svg)](https://docs.rs/rinq)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Type-safe, zero-cost LINQ-inspired query engine for Rust.**
-
-rinq lets you compose filter → sort → aggregate pipelines over any in-memory collection using a fluent builder API. The type-state pattern encodes the valid operation order at compile time, so invalid chains are rejected without runtime overhead.
+**LINQ-style query engine for Rust** — type-safe, zero-cost, chainable pipelines over any collection.
 
 ## Quick Start
 
@@ -19,85 +17,162 @@ rinq = "0.1"
 ```rust
 use rinq::QueryBuilder;
 
-let total: i32 = QueryBuilder::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-    .where_(|x| x % 2 == 0)   // keep evens
-    .order_by(|x| *x)          // sort ascending
-    .sum();                    // terminal — evaluates the pipeline
+let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    .where_(|x| x % 2 == 0)
+    .select(|x| x * x)
+    .order_by_descending(|x| *x)
+    .take(3)
+    .collect();
 
-assert_eq!(total, 30);
+assert_eq!(result, vec![100, 64, 36]);
 ```
 
 ## Feature Flags
 
-| Feature | What it enables |
-|---|---|
-| `parallel` | [`ParallelQueryBuilder`] via [rayon](https://docs.rs/rayon) |
-| `serde` | [`QueryBuilder::from_json`] via [serde_json](https://docs.rs/serde_json) |
+| Flag       | Description                                   | Activates                  |
+|------------|-----------------------------------------------|----------------------------|
+| `parallel` | Parallel execution via [rayon]                | `ParallelQueryBuilder`     |
+| `serde`    | JSON deserialization via [serde_json]         | `QueryBuilder::from_json`  |
 
 ```toml
+[dependencies]
 rinq = { version = "0.1", features = ["parallel", "serde"] }
 ```
 
-## State Machine
+## Type-State Machine
 
-Every `QueryBuilder<T, State>` carries a compile-time state that restricts which methods are available:
+RINQ enforces valid operation order at compile time:
 
-| State | Available transitions |
-|---|---|
-| `Initial` | `where_`, `take`, `skip`, `flat_map`, `order_by`, `group_by`, … |
-| `Filtered` | same as `Initial` plus `select` / `map` |
-| `Sorted` | `then_by`, `then_by_descending`, plus all terminal ops |
-| `Projected<U>` | `collect()` only |
+| State       | Allowed next operations                                |
+|-------------|--------------------------------------------------------|
+| `Initial`   | filter, transform, sort, set ops, terminal ops         |
+| `Filtered`  | filter, transform, sort, terminal ops                  |
+| `Sorted`    | `then_by`, `then_by_descending`, terminal ops          |
+| `Projected` | terminal ops only                                      |
+
+Invalid chains (e.g. `order_by` after `select`) produce a clear compile error.
 
 ## Operator Reference
 
 ### Filtering
-`where_` · `take` · `skip` · `take_while` · `skip_while` · `step_by` · `filter_map`
+| Method | Description |
+|---|---|
+| `where_(pred)` | Keep elements matching predicate |
+| `take(n)` | Keep first N elements |
+| `skip(n)` | Drop first N elements |
+| `take_while(pred)` | Keep elements while predicate holds |
+| `skip_while(pred)` | Drop elements while predicate holds |
+| `step_by(n)` | Keep every N-th element |
+| `filter_map(f)` | Map + filter in one pass |
 
 ### Transformation
-`select` / `map` · `flat_map` · `flatten` · `inspect` · `scan` · `zip` · `zip_with` · `enumerate` · `cycle`
+| Method | Description |
+|---|---|
+| `select(f)` / `map(f)` | Project each element |
+| `flat_map(f)` | Map then flatten |
+| `flatten()` | Flatten nested iterables |
+| `scan(seed, f)` | Running accumulation |
+| `zip(other)` / `zip_with(other, f)` | Combine two sequences |
+| `enumerate()` | Pair each element with its index |
+| `cycle()` | Repeat infinitely (use with `take`) |
+| `inspect(f)` | Side-effect without consuming |
 
 ### Sorting
-`order_by` · `order_by_descending` · `then_by` · `then_by_descending`
+| Method | Description |
+|---|---|
+| `order_by(key)` | Sort ascending by key |
+| `order_by_descending(key)` | Sort descending by key |
+| `then_by(key)` | Secondary ascending sort |
+| `then_by_descending(key)` | Secondary descending sort |
 
-### Deduplication & Grouping
-`distinct` · `distinct_by` · `dedup` · `dedup_by` · `chunk_by` · `group_by` · `group_by_aggregate` · `partition` · `frequencies`
+### Grouping & Dedup
+| Method | Description |
+|---|---|
+| `distinct()` / `distinct_by(key)` | Remove duplicates |
+| `dedup()` / `dedup_by(key)` | Remove consecutive duplicates |
+| `group_by(key)` | Group into `HashMap<K, Vec<T>>` |
+| `group_by_aggregate(key, agg)` | Group + aggregate |
+| `chunk_by(key)` | Group consecutive equal-key runs |
+| `partition(pred)` | Split into two `Vec`s |
+| `frequencies()` | Count occurrences → `HashMap<T, usize>` |
 
 ### Sequence
-`reverse` · `chunk` · `window` · `pairwise` · `intersperse` · `tee`
+| Method | Description |
+|---|---|
+| `reverse()` | Reverse order |
+| `chunk(n)` / `batch(n)` | Split into fixed-size chunks |
+| `window(n)` | Sliding window |
+| `pairwise()` | Consecutive `(T, T)` pairs |
+| `intersperse(sep)` | Insert separator between elements |
+| `tee()` | Clone into two identical `Vec`s |
 
 ### Set Operations
-`concat` · `union` · `intersect` · `except`
+| Method | Description |
+|---|---|
+| `concat(other)` | Append another sequence |
+| `union(other)` | Distinct union |
+| `intersect(other)` | Common elements |
+| `except(other)` | Elements not in other |
 
-### Scalar Aggregation
-`count` · `count_by` · `sum` · `sum_by` · `average` · `average_by` · `min` · `max` · `min_by` · `max_by` · `min_max` · `reduce` · `aggregate` · `aggregate_no_seed`
+### JOIN Operations
+| Method | Description |
+|---|---|
+| `inner_join(right, lk, rk)` | Equi-join → `(T, U)` |
+| `left_join(right, lk, rk)` | Left outer join → `(T, Option<U>)` |
+| `cross_join(right)` | Cartesian product → `(T, U)` |
+
+### Aggregation
+| Method | Description |
+|---|---|
+| `count()` / `count_by(pred)` | Count elements |
+| `sum()` / `sum_by(f)` | Sum values or projected field |
+| `average()` / `average_by(f)` | Mean |
+| `min()` / `max()` | Min / max |
+| `min_by(key)` / `max_by(key)` | Min / max by key |
+| `min_max()` | Both min and max in one pass |
+| `reduce(f)` / `aggregate(seed, f)` | Fold |
+
+### Window Analytics
+| Method | Description |
+|---|---|
+| `running_sum()` | Cumulative sum |
+| `moving_average(n)` | Rolling mean |
+| `rank_by(key)` | Rank each element (ascending) |
+| `lag(n)` | Previous-N-element pairs |
+| `lead(n)` | Next-N-element pairs |
 
 ### Terminal
-`first` · `find` · `last` · `first_or_default` · `last_or_default` · `nth` · `element_at` · `any` · `all` · `none` · `all_unique` · `contains` · `single` · `exactly_one` · `single_or_default` · `collect` · `collect_vec` · `to_sorted_vec` · `to_sorted_vec_desc` · `take_last` · `skip_last` · `index_of` · `position` · `for_each`
+| Method | Description |
+|---|---|
+| `first()` / `find(pred)` | First element or by predicate |
+| `last()` | Last element |
+| `nth(n)` / `element_at(n)` | Element at index |
+| `any(pred)` / `all(pred)` / `none(pred)` | Boolean checks |
+| `all_unique()` | All elements distinct? |
+| `contains(val)` | Element present? |
+| `single()` / `exactly_one()` | Exactly one element |
+| `position(pred)` / `index_of(val)` | Find index |
+| `collect()` / `collect_vec()` | Collect to `Vec` |
+| `take_last(n)` / `skip_last(n)` | Last N / drop last N |
+| `for_each(f)` | Consume with side effect |
+| `to_sorted_vec(key)` / `to_sorted_vec_desc(key)` | Collect sorted |
+| `to_hashmap(key, val)` | Collect to `HashMap` |
+| `to_lookup(key)` | Collect to `HashMap<K, Vec<T>>` |
 
-### Lifecycle & Utilities
-`tap_each` · `tap_collect` · `pipe` · `from_arc_cloned` · `from_arc_slice_cloned`
-
-### Generation
-`QueryBuilder::range` · `QueryBuilder::repeat` · `QueryBuilder::empty` · `QueryBuilder::unfold` · `QueryBuilder::unfold_bounded`
-
-### Collection
-`to_hashmap` · `to_lookup`
+### DX Macros
+| Macro | Description |
+|---|---|
+| `pred!(expr)` | Inline predicate shorthand |
+| `rinq_explain!(query)` | Debug-mode timing wrapper |
 
 ## Sub-crates
 
 | Crate | Description |
 |---|---|
-| [`rinq-stats`](https://crates.io/crates/rinq-stats) | Descriptive statistics, sampling, validation, time series, outlier detection |
-| [`rinq-derive`](https://crates.io/crates/rinq-derive) | `#[derive(Queryable)]` — auto-generate field accessors and typed predicates |
-| [`rinq-syntax`](https://crates.io/crates/rinq-syntax) | `query!` macro — LINQ-style query syntax (experimental) |
-
-## Development Process
-
-This crate is developed with AI-assisted design. Internal planning documents
-(`versions/`) are written in Japanese — the development log of how rinq
-grew from v1 to v5.
+| [`rinq-stats`](https://crates.io/crates/rinq-stats) | Descriptive statistics, correlation, sampling, time-series, outlier detection, validation |
+| [`rinq-derive`](https://crates.io/crates/rinq-derive) | `#[derive(Queryable)]` and `#[derive(QueryableFrom)]` macros |
+| [`rinq-syntax`](https://crates.io/crates/rinq-syntax) | `query! { from x in data where ... select ... }` macro (experimental) |
 
 ## License
 
-MIT — see [LICENSE](../LICENSE)
+MIT — see [LICENSE](../LICENSE).

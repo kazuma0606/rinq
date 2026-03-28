@@ -45,8 +45,15 @@ impl<T: Send + 'static> ParallelQueryBuilder<T, Initial> {
     where
         F: Fn(&T) -> bool + Sync + Send,
     {
-        let items: Vec<T> = self.items.into_par_iter().filter(|x| predicate(x)).collect();
-        ParallelQueryBuilder { items, _state: PhantomData }
+        let items: Vec<T> = self
+            .items
+            .into_par_iter()
+            .filter(|x| predicate(x))
+            .collect();
+        ParallelQueryBuilder {
+            items,
+            _state: PhantomData,
+        }
     }
 
     /// ネストしたイテレータを並列に平坦化する。
@@ -71,7 +78,10 @@ impl<T: Send + 'static> ParallelQueryBuilder<T, Initial> {
         F: Fn(T) -> I + Sync + Send,
     {
         let items: Vec<U> = self.items.into_par_iter().flat_map_iter(f).collect();
-        ParallelQueryBuilder { items, _state: PhantomData }
+        ParallelQueryBuilder {
+            items,
+            _state: PhantomData,
+        }
     }
 
     /// キーセレクタによる並列昇順ソートを行う。
@@ -96,6 +106,9 @@ impl<T: Send + 'static> ParallelQueryBuilder<T, Initial> {
     {
         let mut items = self.items;
         items.par_sort_by_key(|x| key(x));
-        ParallelQueryBuilder { items, _state: PhantomData }
+        ParallelQueryBuilder {
+            items,
+            _state: PhantomData,
+        }
     }
 }

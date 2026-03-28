@@ -3,7 +3,7 @@
 // skewness, kurtosis, and linear_regression via QueryPair.
 
 use rinq::QueryBuilder;
-use rinq_stats::{StatisticsExt, QueryPair};
+use rinq_stats::{QueryPair, StatisticsExt};
 
 fn main() {
     println!("=== rinq-stats: Descriptive Statistics ===\n");

@@ -26,12 +26,8 @@ fn main() {
     println!("Zip sum:         {:?}", sums);
 
     // unfold_bounded — Fibonacci (state = (a, b), emit a)
-    let fib: Vec<u64> = QueryBuilder::unfold_bounded(
-        (0_u64, 1_u64),
-        |(a, b)| Some((a, (b, a + b))),
-        8,
-    )
-    .collect();
+    let fib: Vec<u64> =
+        QueryBuilder::unfold_bounded((0_u64, 1_u64), |(a, b)| Some((a, (b, a + b))), 8).collect();
     println!("Fibonacci(8):    {:?}", fib);
 
     // intersperse

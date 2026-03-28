@@ -4,17 +4,15 @@
 
 #![cfg(feature = "parallel")]
 
-use rinq::parallel::ParallelQueryBuilder;
 use rinq::QueryBuilder;
+use rinq::parallel::ParallelQueryBuilder;
 use std::collections::HashMap;
 
 // ── into_parallel() conversion ──────────────────────────────────────────────
 
 #[test]
 fn into_parallel_from_initial() {
-    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
-        .into_parallel()
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![1, 2, 3]).into_parallel().collect();
     assert_eq!(result, vec![1, 2, 3]);
 }
 
@@ -41,9 +39,7 @@ fn into_parallel_from_sorted() {
 
 #[test]
 fn into_parallel_empty_vec() {
-    let result: Vec<i32> = QueryBuilder::from(vec![])
-        .into_parallel()
-        .collect();
+    let result: Vec<i32> = QueryBuilder::from(vec![]).into_parallel().collect();
     assert!(result.is_empty());
 }
 
@@ -128,32 +124,29 @@ fn par_select_empty_input() {
 
 #[test]
 fn par_flat_map_basic() {
-    let mut result: Vec<i32> =
-        ParallelQueryBuilder::from(vec![vec![1, 2], vec![3, 4], vec![5]])
-            .par_where(|v| !v.is_empty())
-            .par_flat_map(|v| v)
-            .collect();
+    let mut result: Vec<i32> = ParallelQueryBuilder::from(vec![vec![1, 2], vec![3, 4], vec![5]])
+        .par_where(|v| !v.is_empty())
+        .par_flat_map(|v| v)
+        .collect();
     result.sort();
     assert_eq!(result, vec![1, 2, 3, 4, 5]);
 }
 
 #[test]
 fn par_flat_map_from_initial() {
-    let mut result: Vec<i32> =
-        ParallelQueryBuilder::from(vec![1, 2, 3])
-            .par_flat_map(|x| vec![x, x * 10])
-            .collect();
+    let mut result: Vec<i32> = ParallelQueryBuilder::from(vec![1, 2, 3])
+        .par_flat_map(|x| vec![x, x * 10])
+        .collect();
     result.sort();
     assert_eq!(result, vec![1, 2, 3, 10, 20, 30]);
 }
 
 #[test]
 fn par_flat_map_empty_inner() {
-    let result: Vec<i32> =
-        ParallelQueryBuilder::from(vec![vec![], vec![], vec![]])
-            .par_where(|_| true)
-            .par_flat_map(|v: Vec<i32>| v)
-            .collect();
+    let result: Vec<i32> = ParallelQueryBuilder::from(vec![vec![], vec![], vec![]])
+        .par_where(|_| true)
+        .par_flat_map(|v: Vec<i32>| v)
+        .collect();
     assert!(result.is_empty());
 }
 
@@ -178,10 +171,9 @@ fn par_order_by_from_initial() {
 
 #[test]
 fn par_order_by_strings() {
-    let result: Vec<&str> =
-        ParallelQueryBuilder::from(vec!["banana", "apple", "cherry"])
-            .par_order_by(|s| s.len())
-            .collect();
+    let result: Vec<&str> = ParallelQueryBuilder::from(vec!["banana", "apple", "cherry"])
+        .par_order_by(|s| s.len())
+        .collect();
     // "apple" (5) < "banana"/"cherry" (6)
     assert_eq!(result[0], "apple");
     assert_eq!(result[1..].iter().filter(|&&s| s == "banana").count(), 1);
@@ -236,9 +228,7 @@ fn par_sum_empty() {
 #[test]
 fn par_sum_matches_sequential() {
     let data = vec![10, 20, 30, 40, 50];
-    let seq: i32 = QueryBuilder::from(data.clone())
-        .where_(|_| true)
-        .sum();
+    let seq: i32 = QueryBuilder::from(data.clone()).where_(|_| true).sum();
     let par: i32 = ParallelQueryBuilder::from(data).par_sum();
     assert_eq!(seq, par);
 }
@@ -271,15 +261,13 @@ fn par_max_empty() {
 
 #[test]
 fn par_min_by_key() {
-    let min = ParallelQueryBuilder::from(vec!["hello", "hi", "hey"])
-        .par_min_by(|s| s.len());
+    let min = ParallelQueryBuilder::from(vec!["hello", "hi", "hey"]).par_min_by(|s| s.len());
     assert_eq!(min, Some("hi"));
 }
 
 #[test]
 fn par_max_by_key() {
-    let max = ParallelQueryBuilder::from(vec!["hello", "hi", "hey"])
-        .par_max_by(|s| s.len());
+    let max = ParallelQueryBuilder::from(vec!["hello", "hi", "hey"]).par_max_by(|s| s.len());
     assert_eq!(max, Some("hello"));
 }
 
@@ -346,8 +334,7 @@ fn par_group_by_matches_sequential() {
     let seq: HashMap<i32, Vec<i32>> = QueryBuilder::from(data.clone())
         .where_(|_| true)
         .group_by(|x| x % 3);
-    let par: HashMap<i32, Vec<i32>> =
-        ParallelQueryBuilder::from(data).par_group_by(|x| x % 3);
+    let par: HashMap<i32, Vec<i32>> = ParallelQueryBuilder::from(data).par_group_by(|x| x % 3);
 
     assert_eq!(seq.len(), par.len());
     for (k, mut seq_v) in seq {
@@ -422,8 +409,7 @@ fn large_collection_filter_and_sum() {
 #[test]
 fn large_collection_group_by_count() {
     let data: Vec<i32> = (0..10_000).collect();
-    let groups: HashMap<i32, Vec<i32>> =
-        ParallelQueryBuilder::from(data).par_group_by(|x| x % 10);
+    let groups: HashMap<i32, Vec<i32>> = ParallelQueryBuilder::from(data).par_group_by(|x| x % 10);
     assert_eq!(groups.len(), 10);
     for v in groups.values() {
         assert_eq!(v.len(), 1_000);

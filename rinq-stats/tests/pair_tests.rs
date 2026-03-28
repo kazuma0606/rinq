@@ -58,8 +58,7 @@ fn from_builders() {
 #[test]
 fn from_builders_with_filter() {
     let pair = QueryPair::from_builders(
-        QueryBuilder::from(vec![1.0_f64, 2.0, 3.0, 4.0])
-            .where_(|x| *x <= 3.0),
+        QueryBuilder::from(vec![1.0_f64, 2.0, 3.0, 4.0]).where_(|x| *x <= 3.0),
         QueryBuilder::from(vec![10.0_f64, 20.0, 30.0]),
     );
     assert_eq!(pair.len(), 3);
@@ -117,10 +116,7 @@ fn pearson_zero_variance_y() {
 #[test]
 fn pearson_near_zero_for_uncorrelated() {
     // [1,2,3,4,5] vs [3,1,4,1,5] — not perfectly uncorrelated but weak
-    let pair = QueryPair::new(
-        vec![1.0, 2.0, 3.0, 4.0, 5.0],
-        vec![3.0, 1.0, 4.0, 1.0, 5.0],
-    );
+    let pair = QueryPair::new(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![3.0, 1.0, 4.0, 1.0, 5.0]);
     let r = pair.pearson_correlation().abs();
     assert!(r < 1.0); // not perfect
 }
@@ -151,10 +147,7 @@ fn spearman_perfect_inverse() {
 
 #[test]
 fn spearman_within_bounds() {
-    let pair = QueryPair::new(
-        vec![1.0, 5.0, 3.0, 2.0, 4.0],
-        vec![4.0, 2.0, 5.0, 1.0, 3.0],
-    );
+    let pair = QueryPair::new(vec![1.0, 5.0, 3.0, 2.0, 4.0], vec![4.0, 2.0, 5.0, 1.0, 3.0]);
     let r = pair.spearman_correlation();
     assert!(r >= -1.0 && r <= 1.0);
 }
@@ -216,7 +209,10 @@ fn linear_regression_negative_slope() {
     let pair = QueryPair::new(vec![1.0, 2.0, 3.0], vec![7.0, 4.0, 1.0]);
     let (slope, intercept) = pair.linear_regression();
     assert!((slope + 3.0).abs() < EPS_LOOSE, "slope={slope}");
-    assert!((intercept - 10.0).abs() < EPS_LOOSE, "intercept={intercept}");
+    assert!(
+        (intercept - 10.0).abs() < EPS_LOOSE,
+        "intercept={intercept}"
+    );
 }
 
 // ── integration with rinq operations ─────────────────────────────────────────

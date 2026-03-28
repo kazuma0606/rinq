@@ -161,7 +161,11 @@ impl<State: 'static> NormalizeExt for QueryBuilder<f64, State> {
             weighted_sum += v * w;
             total_weight += w;
         }
-        if total_weight == 0.0 { None } else { Some(weighted_sum / total_weight) }
+        if total_weight == 0.0 {
+            None
+        } else {
+            Some(weighted_sum / total_weight)
+        }
     }
 
     fn outlier_scores_zscore(self) -> Vec<f64> {
@@ -176,7 +180,10 @@ impl<State: 'static> NormalizeExt for QueryBuilder<f64, State> {
         if std_dev == 0.0 {
             return vec![0.0; values.len()];
         }
-        values.into_iter().map(|x| ((x - mean) / std_dev).abs()).collect()
+        values
+            .into_iter()
+            .map(|x| ((x - mean) / std_dev).abs())
+            .collect()
     }
 
     fn percentile_filter(self, lo_pct: f64, hi_pct: f64) -> Vec<f64> {
@@ -190,7 +197,10 @@ impl<State: 'static> NormalizeExt for QueryBuilder<f64, State> {
         let hi_idx = (hi_pct.clamp(0.0, 1.0) * n as f64).ceil() as usize;
         let lo_val = values[lo_idx.min(n - 1)];
         let hi_val = values[(hi_idx.saturating_sub(1)).min(n - 1)];
-        values.into_iter().filter(|&x| x >= lo_val && x <= hi_val).collect()
+        values
+            .into_iter()
+            .filter(|&x| x >= lo_val && x <= hi_val)
+            .collect()
     }
 
     fn cumulative_distribution(self) -> Vec<f64> {

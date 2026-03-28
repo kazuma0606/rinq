@@ -2,8 +2,8 @@
 // Phase 4D operators: scan, chunk_by, dedup, dedup_by, zip_with, pairwise,
 // unfold, unfold_bounded, intersperse, min_max
 
-use super::{QueryBuilder, QueryData};
 use super::iterators::{ChunkByIterator, UnfoldBoundedIter, UnfoldIter};
+use super::{QueryBuilder, QueryData};
 use crate::core::state::{Filtered, Initial};
 use std::marker::PhantomData;
 

@@ -1,8 +1,8 @@
 // tests/rinq_integration_tests.rs
 // Integration tests for RINQ with rusted-ca architecture
 
-use rinq::{MetricsQueryBuilder, QueryBuilder};
 use rinq::MetricsCollector;
+use rinq::{MetricsQueryBuilder, QueryBuilder};
 use std::sync::Arc;
 
 // **Task 13.2: Integration test for metrics collection**
@@ -194,7 +194,6 @@ fn test_metrics_collector_integration() {
     assert_eq!(metrics.get("another_metric"), Some(1));
     assert_eq!(metrics.get("nonexistent"), None);
 }
-
 
 #[test]
 fn test_metrics_with_sorted_query() {

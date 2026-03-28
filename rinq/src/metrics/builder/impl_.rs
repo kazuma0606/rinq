@@ -1387,8 +1387,10 @@ impl<T: 'static, State> MetricsQueryBuilder<T, State> {
         let result = self.inner.first_or_default();
         let duration = start.elapsed();
 
-        self.metrics
-            .record_query_execution(&format!("{}_first_or_default", self.operation_name), duration);
+        self.metrics.record_query_execution(
+            &format!("{}_first_or_default", self.operation_name),
+            duration,
+        );
 
         result
     }
@@ -1403,8 +1405,10 @@ impl<T: 'static, State> MetricsQueryBuilder<T, State> {
         let result = self.inner.last_or_default();
         let duration = start.elapsed();
 
-        self.metrics
-            .record_query_execution(&format!("{}_last_or_default", self.operation_name), duration);
+        self.metrics.record_query_execution(
+            &format!("{}_last_or_default", self.operation_name),
+            duration,
+        );
 
         result
     }

@@ -442,62 +442,64 @@
 
 ### 5I-1: GitHub Actions CI
 
-- [ ] `.github/workflows/` ディレクトリを作成
-- [ ] `.github/workflows/ci.yml` を新規作成（test / clippy / fmt の 3 ジョブ）
-- [ ] `test` ジョブ — `cargo test --workspace --all-features`
-- [ ] `clippy` ジョブ — `cargo clippy --workspace --all-features -- -D warnings`
-- [ ] `fmt` ジョブ — `cargo fmt --all --check`
-- [ ] `Swatinem/rust-cache@v2` によるキャッシュを全ジョブに設定
-- [ ] `push: branches: [main, dev]` / `pull_request: branches: [main]` トリガーを設定
-- [ ] GitHub 上で CI が実際に通ることを確認
+- [x] `.github/workflows/` ディレクトリを作成
+- [x] `.github/workflows/ci.yml` を新規作成（test / clippy / fmt の 3 ジョブ）
+- [x] `test` ジョブ — `cargo test --workspace --all-features`
+- [x] `clippy` ジョブ — `cargo clippy --workspace --all-features -- -D warnings`
+- [x] `fmt` ジョブ — `cargo fmt --all --check`
+- [x] `Swatinem/rust-cache@v2` によるキャッシュを全ジョブに設定
+- [x] `push: branches: [main, dev]` / `pull_request: branches: [main]` トリガーを設定
+- [ ] GitHub 上で CI が実際に通ることを確認（push 後に確認）
 
 ### 5I-2: LICENSE
 
-- [ ] `LICENSE` ファイルを新規作成（MIT、Copyright 2026 kazuma0606）
+- [x] `LICENSE` ファイルを新規作成（MIT、Copyright 2026 kazuma0606）
 
 ### 5I-3: CONTRIBUTING.md
 
-- [ ] `CONTRIBUTING.md` を新規作成
-- [ ] 貢献規模別の要求事項（小/中/大）を記載
-- [ ] **AI ツールの使用を明示的に歓迎する旨を記載**（このプロジェクト自体が AI 支援開発であることを明記）
-- [ ] AI 使用時の任意表記（コミットメッセージへの `# AI-assisted` 追記）を提案として記載
-- [ ] PR 前の必須チェック（`cargo test` / `cargo clippy` 通過）を明記
-- [ ] 大きな変更は Issue での事前議論を推奨する旨を記載
-- [ ] `versions/` ディレクトリについての説明（内部 AI コーディング用、コントリビューターは不要）
+- [x] `CONTRIBUTING.md` を新規作成
+- [x] 貢献規模別の要求事項（小/中/大）を記載
+- [x] AI ツールの使用を明示的に歓迎する旨を記載
+- [x] AI 使用時の任意表記（コミットメッセージへの `# AI-assisted` 追記）を提案として記載
+- [x] PR 前の必須チェック（`cargo test` / `cargo clippy` 通過）を明記
+- [x] 大きな変更は Issue での事前議論を推奨する旨を記載
+- [x] `versions/` ディレクトリについての説明（内部 AI コーディング用、コントリビューターは不要）
 
 ### 5I-4: rinq/README.md（クレート専用）
 
-- [ ] `rinq/README.md` を新規作成（ルートの README とは別）
-- [ ] CI バッジを追加（`https://github.com/kazuma0606/rinq/actions/workflows/ci.yml`）
-- [ ] crates.io バッジを追加（`https://crates.io/crates/rinq`）
-- [ ] docs.rs バッジを追加（`https://docs.rs/rinq`）
-- [ ] license バッジを追加
-- [ ] Quick Start コードブロック（6〜10 行で完結する例）
-- [ ] Feature Flags テーブル（parallel / serde）
-- [ ] State Machine テーブル
-- [ ] 全演算子リファレンス（カテゴリ別テーブル）
-- [ ] Sub-crates セクション（rinq-stats / rinq-derive / rinq-syntax へのリンクと一行説明）
+- [x] `rinq/README.md` を新規作成（ルートの README とは別）
+- [x] CI バッジを追加
+- [x] crates.io バッジを追加
+- [x] docs.rs バッジを追加
+- [x] license バッジを追加
+- [x] Quick Start コードブロック
+- [x] Feature Flags テーブル（parallel / serde）
+- [x] State Machine テーブル
+- [x] 全演算子リファレンス（カテゴリ別テーブル）
+- [x] Sub-crates セクション
 
 ### 5I-5: Issue/PR テンプレート
 
-- [ ] `.github/ISSUE_TEMPLATE/bug_report.md` を新規作成（再現手順・期待動作・Rust バージョン）
-- [ ] `.github/ISSUE_TEMPLATE/feature_request.md` を新規作成（シグネチャ案・ユースケース・既存演算子との比較）
-- [ ] `.github/PULL_REQUEST_TEMPLATE.md` を新規作成（`cargo test` / `cargo clippy` / doc test / CHANGELOG チェックリスト）
+- [x] `.github/ISSUE_TEMPLATE/bug_report.md` を新規作成
+- [x] `.github/ISSUE_TEMPLATE/feature_request.md` を新規作成
+- [x] `.github/PULL_REQUEST_TEMPLATE.md` を新規作成
 
 ### 5I-6: repository URL を全 Cargo.toml に反映
 
-- [ ] `rinq/Cargo.toml` — `repository = "https://github.com/kazuma0606/rinq"` に更新
-- [ ] `rinq-stats/Cargo.toml` — 同上
-- [ ] `rinq-derive/Cargo.toml` — 同上
-- [ ] `rinq-syntax/Cargo.toml` — 同上
+- [x] `rinq/Cargo.toml` — 確認済み
+- [x] `rinq-stats/Cargo.toml` — 確認済み
+- [x] `rinq-derive/Cargo.toml` — 確認済み
+- [x] `rinq-syntax/Cargo.toml` — 確認済み
 
 ### Phase 5I テスト確認
 
-- [ ] `cargo test --workspace` 全件通過（ローカルで最終確認）
-- [ ] GitHub Actions CI が green になることを確認（push して確認）
+- [x] `cargo test --workspace` 全件通過（ローカルで最終確認）
+- [x] `cargo fmt --all --check` 通過
+- [x] `cargo clippy --workspace --all-features -- -D warnings` 通過
+- [ ] GitHub Actions CI が green になることを確認（push 後に確認）
 
 ### ✅ Phase 5I 完了チェック / v5 全フェーズ完了
-- [ ] 上記すべて完了
+- [x] ローカルすべて完了（CI green 確認は push 後）
 
 ---
 

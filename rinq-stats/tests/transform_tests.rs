@@ -38,8 +38,7 @@ fn normalize_negative_values() {
 
 #[test]
 fn standardize_mean_zero_std_one() {
-    let v = QueryBuilder::from(vec![2.0_f64, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])
-        .standardize();
+    let v = QueryBuilder::from(vec![2.0_f64, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]).standardize();
     let mean: f64 = v.iter().sum::<f64>() / v.len() as f64;
     assert!(mean.abs() < 1e-10);
     // value 9: z = (9 - 5) / 2 = 2.0
@@ -63,8 +62,7 @@ fn standardize_all_identical_returns_zeros() {
 #[test]
 fn weighted_average_basic() {
     // weights = values themselves: (1*1 + 2*2 + 3*3) / 6 = 14/6
-    let avg = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .weighted_average(|x| *x);
+    let avg = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).weighted_average(|x| *x);
     assert!((avg.unwrap() - 14.0 / 6.0).abs() < 1e-10);
 }
 
@@ -76,15 +74,13 @@ fn weighted_average_empty_returns_none() {
 
 #[test]
 fn weighted_average_zero_weight_returns_none() {
-    let avg = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .weighted_average(|_| 0.0);
+    let avg = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).weighted_average(|_| 0.0);
     assert!(avg.is_none());
 }
 
 #[test]
 fn weighted_average_uniform_weights_equals_mean() {
-    let avg = QueryBuilder::from(vec![2.0_f64, 4.0, 6.0])
-        .weighted_average(|_| 1.0);
+    let avg = QueryBuilder::from(vec![2.0_f64, 4.0, 6.0]).weighted_average(|_| 1.0);
     assert!((avg.unwrap() - 4.0).abs() < 1e-10);
 }
 
