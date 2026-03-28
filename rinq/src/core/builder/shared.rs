@@ -1,6 +1,7 @@
 // src/core/builder/shared.rs
 // impl<T, State> QueryBuilder<T, State> — terminal operations available in all states
 
+use super::iterators::ChunkIterator;
 use super::{QueryBuilder, QueryData};
 use crate::core::error::{RinqError, RinqResult};
 use crate::core::state::Filtered;
@@ -972,6 +973,556 @@ impl<T: 'static, State> QueryBuilder<T, State> {
         T2: 'static,
     {
         f(self)
+    }
+}
+
+// ── Phase 5D: terminal operator enhancements ────────────────────────────────
+
+impl<T: 'static, State> QueryBuilder<T, State> {
+    /// Apply a side-effect closure to every element, consuming the query.
+    ///
+    /// Unlike `tap_each`, `for_each` is a **terminal** operation — it drives the
+    /// pipeline to completion and does not return a new `QueryBuilder`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let mut sum = 0;
+    /// QueryBuilder::from(vec![1, 2, 3]).for_each(|x| sum += x);
+    /// assert_eq!(sum, 6);
+    /// ```
+    pub fn for_each<F>(self, f: F)
+    where
+        F: FnMut(T),
+    {
+        match self.data {
+            QueryData::Iterator(iter) => iter.for_each(f),
+            QueryData::SortedVec { items, .. } => items.into_iter().for_each(f),
+        }
+    }
+
+    /// Sort all elements by `key_selector` (ascending) and collect into a `Vec<T>`.
+    ///
+    /// Shorthand for `.order_by(key).collect::<Vec<_>>()`.
+    ///
+    /// ⚠ Eagerly collects all elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result = QueryBuilder::from(vec![3, 1, 4, 1, 5])
+    ///     .to_sorted_vec(|x| *x);
+    /// assert_eq!(result, vec![1, 1, 3, 4, 5]);
+    /// ```
+    pub fn to_sorted_vec<K, F>(self, key_selector: F) -> Vec<T>
+    where
+        F: Fn(&T) -> K,
+        K: Ord,
+    {
+        let mut items = self.into_vec();
+        items.sort_by_key(key_selector);
+        items
+    }
+
+    /// Sort all elements by `key_selector` (descending) and collect into a `Vec<T>`.
+    ///
+    /// Shorthand for `.order_by_descending(key).collect::<Vec<_>>()`.
+    ///
+    /// ⚠ Eagerly collects all elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result = QueryBuilder::from(vec![3, 1, 4, 1, 5])
+    ///     .to_sorted_vec_desc(|x| *x);
+    /// assert_eq!(result, vec![5, 4, 3, 1, 1]);
+    /// ```
+    pub fn to_sorted_vec_desc<K, F>(self, key_selector: F) -> Vec<T>
+    where
+        F: Fn(&T) -> K,
+        K: Ord,
+    {
+        let mut items = self.into_vec();
+        items.sort_by_key(|x| std::cmp::Reverse(key_selector(x)));
+        items
+    }
+
+    /// Return the last `n` elements as a `Vec<T>`.
+    ///
+    /// If the collection has fewer than `n` elements, all elements are returned.
+    /// If `n == 0`, an empty `Vec` is returned.
+    ///
+    /// ⚠ Eagerly collects all elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result = QueryBuilder::from(vec![1, 2, 3, 4, 5]).take_last(3);
+    /// assert_eq!(result, vec![3, 4, 5]);
+    ///
+    /// // Fewer elements than n
+    /// let result = QueryBuilder::from(vec![1, 2]).take_last(5);
+    /// assert_eq!(result, vec![1, 2]);
+    /// ```
+    pub fn take_last(self, n: usize) -> Vec<T> {
+        let mut items = self.into_vec();
+        if n >= items.len() {
+            items
+        } else {
+            items.split_off(items.len() - n)
+        }
+    }
+
+    /// Return all elements except the last `n`, as a `Vec<T>`.
+    ///
+    /// If the collection has `n` or fewer elements, an empty `Vec` is returned.
+    /// If `n == 0`, all elements are returned.
+    ///
+    /// ⚠ Eagerly collects all elements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let result = QueryBuilder::from(vec![1_i32, 2, 3, 4, 5]).skip_last(2);
+    /// assert_eq!(result, vec![1, 2, 3]);
+    ///
+    /// // More elements skipped than exist
+    /// let result = QueryBuilder::from(vec![1_i32, 2]).skip_last(5);
+    /// assert_eq!(result, Vec::<i32>::new());
+    /// ```
+    pub fn skip_last(self, n: usize) -> Vec<T> {
+        let mut items = self.into_vec();
+        if n >= items.len() {
+            items.clear();
+        } else {
+            items.truncate(items.len() - n);
+        }
+        items
+    }
+
+    /// Count elements matching a predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let count = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    ///     .count_by(|x| x % 2 == 0);
+    /// assert_eq!(count, 2);
+    /// ```
+    pub fn count_by<F>(self, predicate: F) -> usize
+    where
+        F: Fn(&T) -> bool,
+    {
+        match self.data {
+            QueryData::Iterator(iter) => iter.filter(|x| predicate(x)).count(),
+            QueryData::SortedVec { items, .. } => items.iter().filter(|x| predicate(x)).count(),
+        }
+    }
+
+    /// Sum a numeric field extracted from each element.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// #[derive(Clone)]
+    /// struct Order { amount: i32 }
+    ///
+    /// let total = QueryBuilder::from(vec![
+    ///     Order { amount: 10 },
+    ///     Order { amount: 25 },
+    ///     Order { amount: 15 },
+    /// ])
+    /// .sum_by(|o| o.amount);
+    /// assert_eq!(total, 50_i32);
+    /// ```
+    pub fn sum_by<N, F>(self, key: F) -> N
+    where
+        F: Fn(T) -> N,
+        N: Default + std::ops::Add<Output = N>,
+    {
+        match self.data {
+            QueryData::Iterator(iter) => iter.map(key).fold(N::default(), |a, b| a + b),
+            QueryData::SortedVec { items, .. } => {
+                items.into_iter().map(key).fold(N::default(), |a, b| a + b)
+            }
+        }
+    }
+
+    /// Compute the arithmetic mean of a `f64` field extracted from each element.
+    ///
+    /// Returns `None` for an empty collection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let avg = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).average_by(|x| *x);
+    /// assert_eq!(avg, Some(2.0));
+    ///
+    /// let empty = QueryBuilder::from(Vec::<f64>::new()).average_by(|x| *x);
+    /// assert_eq!(empty, None);
+    /// ```
+    pub fn average_by<F>(self, key: F) -> Option<f64>
+    where
+        F: Fn(&T) -> f64,
+    {
+        let mut sum = 0.0_f64;
+        let mut count = 0usize;
+        match self.data {
+            QueryData::Iterator(iter) => {
+                for item in iter {
+                    sum += key(&item);
+                    count += 1;
+                }
+            }
+            QueryData::SortedVec { items, .. } => {
+                for item in &items {
+                    sum += key(item);
+                    count += 1;
+                }
+            }
+        }
+        if count == 0 { None } else { Some(sum / count as f64) }
+    }
+
+    /// Alias for [`aggregate_no_seed`](QueryBuilder::aggregate_no_seed).
+    ///
+    /// Fold all elements without a seed value, returning `None` if empty.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let max = QueryBuilder::from(vec![3, 1, 4, 1, 5])
+    ///     .reduce(|a, b| if a > b { a } else { b });
+    /// assert_eq!(max, Some(5));
+    /// ```
+    pub fn reduce<F>(self, f: F) -> Option<T>
+    where
+        F: Fn(T, T) -> T,
+    {
+        self.aggregate_no_seed(f)
+    }
+
+    /// Check whether all elements are distinct (`T: Hash + Eq`).
+    ///
+    /// Returns `true` for an empty collection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// assert!(QueryBuilder::from(vec![1, 2, 3]).all_unique());
+    /// assert!(!QueryBuilder::from(vec![1, 2, 2, 3]).all_unique());
+    /// assert!(QueryBuilder::from(Vec::<i32>::new()).all_unique());
+    /// ```
+    pub fn all_unique(self) -> bool
+    where
+        T: Hash + Eq,
+    {
+        let mut seen = HashSet::new();
+        match self.data {
+            QueryData::Iterator(iter) => {
+                for item in iter {
+                    if !seen.insert(item) {
+                        return false;
+                    }
+                }
+            }
+            QueryData::SortedVec { items, .. } => {
+                for item in items {
+                    if !seen.insert(item) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    /// Check whether **no** element satisfies the predicate.
+    ///
+    /// Equivalent to `!any(pred)`. Returns `true` for an empty collection.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// assert!(QueryBuilder::from(vec![1, 2, 3]).none(|x| *x > 10));
+    /// assert!(!QueryBuilder::from(vec![1, 2, 3]).none(|x| *x > 2));
+    /// assert!(QueryBuilder::from(Vec::<i32>::new()).none(|x| *x > 0));
+    /// ```
+    pub fn none<F>(self, predicate: F) -> bool
+    where
+        F: Fn(&T) -> bool,
+    {
+        !match self.data {
+            QueryData::Iterator(mut iter) => iter.any(|item| predicate(&item)),
+            QueryData::SortedVec { items, .. } => items.iter().any(|item| predicate(item as &T)),
+        }
+    }
+}
+
+// ── Phase 5E: query enrichment ───────────────────────────────────────────────
+
+impl<T: 'static, State> QueryBuilder<T, State> {
+    /// Count how many times each distinct value appears.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let freq = QueryBuilder::from(vec!["a", "b", "a", "c", "b", "a"])
+    ///     .frequencies();
+    /// assert_eq!(freq[&"a"], 3);
+    /// assert_eq!(freq[&"b"], 2);
+    /// assert_eq!(freq[&"c"], 1);
+    /// ```
+    pub fn frequencies(self) -> HashMap<T, usize>
+    where
+        T: Hash + Eq,
+    {
+        let mut map: HashMap<T, usize> = HashMap::new();
+        match self.data {
+            QueryData::Iterator(iter) => {
+                for item in iter {
+                    *map.entry(item).or_insert(0) += 1;
+                }
+            }
+            QueryData::SortedVec { items, .. } => {
+                for item in items {
+                    *map.entry(item).or_insert(0) += 1;
+                }
+            }
+        }
+        map
+    }
+
+    /// Flatten one level of nesting from a sequence of iterables.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let nested = vec![vec![1, 2], vec![3, 4], vec![5]];
+    /// let flat: Vec<i32> = QueryBuilder::from(nested).flatten().collect();
+    /// assert_eq!(flat, vec![1, 2, 3, 4, 5]);
+    /// ```
+    pub fn flatten<U>(self) -> QueryBuilder<U, Filtered>
+    where
+        T: IntoIterator<Item = U>,
+        U: 'static,
+    {
+        let iter: Box<dyn Iterator<Item = T>> = match self.data {
+            QueryData::Iterator(it) => it,
+            QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(iter.flatten())),
+            _state: PhantomData,
+        }
+    }
+
+    /// Return the zero-based index of the first element matching the predicate,
+    /// or `None` if no match is found.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let pos = QueryBuilder::from(vec![10, 20, 30, 40])
+    ///     .position(|x| *x == 30);
+    /// assert_eq!(pos, Some(2));
+    ///
+    /// let none = QueryBuilder::from(vec![10, 20, 30])
+    ///     .position(|x| *x == 99);
+    /// assert_eq!(none, None);
+    /// ```
+    pub fn position<F>(self, mut predicate: F) -> Option<usize>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        match self.data {
+            QueryData::Iterator(iter) => iter
+                .enumerate()
+                .find_map(|(i, item)| if predicate(&item) { Some(i) } else { None }),
+            QueryData::SortedVec { items, .. } => {
+                items.iter().position(|item| predicate(item as &T))
+            }
+        }
+    }
+
+    /// Return the first element matching a predicate, or `None` if absent.
+    ///
+    /// Alias for `.where_(pred).first()` applied efficiently in a single pass.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let found = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    ///     .find(|x| *x > 3);
+    /// assert_eq!(found, Some(4));
+    ///
+    /// let not_found = QueryBuilder::from(vec![1, 2, 3])
+    ///     .find(|x| *x > 10);
+    /// assert_eq!(not_found, None);
+    /// ```
+    pub fn find<F>(self, mut predicate: F) -> Option<T>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        match self.data {
+            QueryData::Iterator(mut iter) => iter.find(|item| predicate(item)),
+            QueryData::SortedVec { items, .. } => {
+                items.into_iter().find(|item| predicate(item))
+            }
+        }
+    }
+
+    /// Return the zero-based index of the first occurrence of `value`,
+    /// or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let idx = QueryBuilder::from(vec![10, 20, 30, 20])
+    ///     .index_of(&20);
+    /// assert_eq!(idx, Some(1));
+    ///
+    /// let none = QueryBuilder::from(vec![1, 2, 3])
+    ///     .index_of(&99);
+    /// assert_eq!(none, None);
+    /// ```
+    pub fn index_of(self, value: &T) -> Option<usize>
+    where
+        T: PartialEq,
+    {
+        match self.data {
+            QueryData::Iterator(iter) => iter
+                .enumerate()
+                .find_map(|(i, item)| if item == *value { Some(i) } else { None }),
+            QueryData::SortedVec { items, .. } => {
+                items.iter().position(|item| item == value)
+            }
+        }
+    }
+
+    /// Alias for [`element_at`](QueryBuilder::element_at).
+    ///
+    /// Return the element at zero-based `index`, or `None` if out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// assert_eq!(QueryBuilder::from(vec![10, 20, 30]).nth(1), Some(20));
+    /// assert_eq!(QueryBuilder::from(vec![10, 20, 30]).nth(5), None);
+    /// ```
+    pub fn nth(self, index: usize) -> Option<T> {
+        self.element_at(index)
+    }
+
+    /// Alias for `chunk` available from any query state.
+    ///
+    /// Split the sequence into fixed-size `Vec<T>` batches.
+    /// The last batch may be smaller than `size` if the total count is not
+    /// evenly divisible.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let batches: Vec<Vec<i32>> = QueryBuilder::from(vec![1, 2, 3, 4, 5])
+    ///     .batch(2)
+    ///     .collect();
+    /// assert_eq!(batches, vec![vec![1, 2], vec![3, 4], vec![5]]);
+    /// ```
+    pub fn batch(self, size: usize) -> QueryBuilder<Vec<T>, Filtered> {
+        assert!(size > 0, "batch size must be greater than 0");
+        let iter: Box<dyn Iterator<Item = T>> = match self.data {
+            QueryData::Iterator(it) => it,
+            QueryData::SortedVec { items, .. } => Box::new(items.into_iter()),
+        };
+        QueryBuilder {
+            data: QueryData::Iterator(Box::new(ChunkIterator {
+                inner: iter,
+                chunk_size: size,
+            })),
+            _state: PhantomData,
+        }
+    }
+
+    /// Alias for [`single`](QueryBuilder::single).
+    ///
+    /// Return `Ok(element)` if exactly one element exists, or `Err` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// assert_eq!(QueryBuilder::from(vec![42]).exactly_one(), Ok(42));
+    /// assert!(QueryBuilder::from(vec![1, 2]).exactly_one().is_err());
+    /// assert!(QueryBuilder::from(Vec::<i32>::new()).exactly_one().is_err());
+    /// ```
+    pub fn exactly_one(self) -> RinqResult<T> {
+        self.single()
+    }
+
+    /// Produce two independent `Vec<T>` clones of the sequence.
+    ///
+    /// Useful when you need to apply two different terminal operations on the
+    /// same data without rebuilding the source.
+    ///
+    /// ⚠ Clones all elements. Both `Vec` values are fully independent.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use rinq::QueryBuilder;
+    ///
+    /// let (a, b) = QueryBuilder::from(vec![1, 2, 3]).tee();
+    /// assert_eq!(a, vec![1, 2, 3]);
+    /// assert_eq!(b, vec![1, 2, 3]);
+    /// ```
+    pub fn tee(self) -> (Vec<T>, Vec<T>)
+    where
+        T: Clone,
+    {
+        let items = self.into_vec();
+        let clone = items.clone();
+        (items, clone)
     }
 }
 

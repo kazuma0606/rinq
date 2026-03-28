@@ -1,10 +1,10 @@
 [package]
 name = "rinq-syntax"
-version = "4.0.0"
+version = "0.1.0"
 edition = "2024"
 description = "LINQ-style `query!` macro for the rinq query engine (experimental)"
 license = "MIT"
-repository = "https://github.com/yoshidev/rusted-ca"
+repository = "https://github.com/kazuma0606/rinq"
 keywords = ["query", "linq", "macro", "rinq"]
 categories = ["rust-patterns"]
 readme = "README.md"
@@ -18,7 +18,10 @@ quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
-rinq = { path = ".." }
+rinq = { path = "../rinq", version = "0.1.0" }
+
+[[example]]
+name = "syntax_example"
 
 [package.metadata.docs.rs]
 all-features = true

@@ -3,6 +3,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::Ident;
 
 use crate::ast::{Clause, QueryInput};
 
@@ -42,11 +43,16 @@ pub fn generate(input: QueryInput) -> TokenStream {
 
     let mut state = State::Initial;
 
+    // The pattern used in closures for the current element.
+    // Starts as the single binding; becomes a tuple pattern after a join.
+    let mut closure_pat: TokenStream = quote! { #binding };
+
     for clause in &input.clauses {
         match clause {
             Clause::Where { tokens } => {
+                let pat = &closure_pat;
                 chain = quote! {
-                    #chain.where_(|#binding| { #tokens })
+                    #chain.where_(|#pat| { #tokens })
                 };
                 state = State::Filtered;
             }
@@ -55,31 +61,31 @@ pub fn generate(input: QueryInput) -> TokenStream {
                 chain = quote! {
                     #chain.take(#tokens as usize)
                 };
-                // take is available on Initial, Filtered, and Sorted; state unchanged
             }
 
             Clause::Skip { tokens } => {
                 chain = quote! {
                     #chain.skip(#tokens as usize)
                 };
-                // skip is available on Initial, Filtered, and Sorted; state unchanged
             }
 
             Clause::OrderBy { keys } => {
                 let first = &keys[0];
                 let key = &first.tokens;
+                let pat = &closure_pat;
                 chain = if first.desc {
-                    quote! { #chain.order_by_descending(|#binding| #key) }
+                    quote! { #chain.order_by_descending(|#pat| #key) }
                 } else {
-                    quote! { #chain.order_by(|#binding| #key) }
+                    quote! { #chain.order_by(|#pat| #key) }
                 };
                 state = State::Sorted;
                 for key_spec in keys.iter().skip(1) {
                     let key = &key_spec.tokens;
+                    let pat = &closure_pat;
                     chain = if key_spec.desc {
-                        quote! { #chain.then_by_descending(|#binding| #key) }
+                        quote! { #chain.then_by_descending(|#pat| #key) }
                     } else {
-                        quote! { #chain.then_by(|#binding| #key) }
+                        quote! { #chain.then_by(|#pat| #key) }
                     };
                 }
             }
@@ -87,36 +93,60 @@ pub fn generate(input: QueryInput) -> TokenStream {
             Clause::ThenBy { keys } => {
                 for key_spec in keys {
                     let key = &key_spec.tokens;
+                    let pat = &closure_pat;
                     chain = if key_spec.desc {
-                        quote! { #chain.then_by_descending(|#binding| #key) }
+                        quote! { #chain.then_by_descending(|#pat| #key) }
                     } else {
-                        quote! { #chain.then_by(|#binding| #key) }
+                        quote! { #chain.then_by(|#pat| #key) }
                     };
                 }
-                // ThenBy keeps Sorted state
             }
 
             Clause::Select { tokens } => {
-                // `select` is only available on Filtered state.
-                // If we are in Initial or Sorted state, we need to collect first
-                // for Sorted (which is already done via the sorted vec), but for
-                // Initial we need to transition to Filtered via a pass-through filter.
                 if state == State::Initial {
-                    chain = quote! {
-                        #chain.where_(|_| true)
-                    };
+                    chain = quote! { #chain.where_(|_| true) };
                     state = State::Filtered;
                 } else if state == State::Sorted {
-                    // After sorting, transition to Filtered via inspect (no-op side-effect),
-                    // since `where_` is not available on Sorted but `select` requires Filtered.
-                    chain = quote! {
-                        #chain.inspect(|_| {})
-                    };
+                    chain = quote! { #chain.inspect(|_| {}) };
                     state = State::Filtered;
                 }
+                let pat = &closure_pat;
                 chain = quote! {
-                    #chain.select(|#binding| { #tokens })
+                    #chain.select(|#pat| { #tokens })
                 };
+            }
+
+            Clause::Join {
+                binding: join_binding,
+                source_tokens,
+                left_key,
+                right_key,
+                is_left,
+            } => {
+                // Transition to Filtered if needed (join is available from any state).
+                if state == State::Sorted {
+                    chain = quote! { #chain.inspect(|_| {}) };
+                }
+
+                let outer_pat = &closure_pat;
+                let method: Ident = if *is_left {
+                    syn::parse_str("left_join").unwrap()
+                } else {
+                    syn::parse_str("inner_join").unwrap()
+                };
+
+                chain = quote! {
+                    #chain.#method(
+                        #source_tokens,
+                        |#outer_pat| #left_key,
+                        |#join_binding| #right_key,
+                    )
+                };
+
+                // After join the element type becomes a tuple; update the closure pattern.
+                let outer_binding = binding;
+                closure_pat = quote! { (#outer_binding, #join_binding) };
+                state = State::Filtered;
             }
         }
     }

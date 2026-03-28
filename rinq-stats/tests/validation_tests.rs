@@ -353,3 +353,136 @@ fn validate_with_multiple_failures_correct_messages() {
     assert_eq!(errors[0].message, "value=-1");
     assert_eq!(errors[1].message, "value=-2");
 }
+
+// ── validate_range ────────────────────────────────────────────────────────────
+
+#[test]
+fn validate_range_all_in_range_ok() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![5_i32, 50, 99])
+        .validate(|_| true, "dummy", "")
+        .validate_range(|x| *x, 0, 100, "in_range")
+        .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_range_out_of_range_returns_error() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![5_i32, 150, 30])
+        .validate(|_| true, "dummy", "")
+        .validate_range(|x| *x, 0, 100, "in_range")
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].rule, "in_range");
+    assert_eq!(errors[0].index, 1);
+}
+
+#[test]
+fn validate_range_boundary_values_pass() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![0_i32, 100])
+        .validate(|_| true, "dummy", "")
+        .validate_range(|x| *x, 0, 100, "bounds")
+        .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_range_error_message_includes_value_and_bounds() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![200_i32])
+        .validate(|_| true, "dummy", "")
+        .validate_range(|x| *x, 0, 100, "in_range")
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert!(errors[0].message.contains("200"));
+    assert!(errors[0].message.contains("0"));
+    assert!(errors[0].message.contains("100"));
+}
+
+// ── validate_unique ───────────────────────────────────────────────────────────
+
+#[test]
+fn validate_unique_no_duplicates_ok() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, 2, 3, 4])
+        .validate(|_| true, "dummy", "")
+        .validate_unique(|x| *x, "unique_id")
+        .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_unique_duplicate_flagged() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, 2, 1, 3])
+        .validate(|_| true, "dummy", "")
+        .validate_unique(|x| *x, "unique_id")
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].index, 2);
+    assert_eq!(errors[0].rule, "unique_id");
+}
+
+#[test]
+fn validate_unique_multiple_duplicates() {
+    let result: Result<Vec<i32>, _> = QueryBuilder::from(vec![1_i32, 1, 1])
+        .validate(|_| true, "dummy", "")
+        .validate_unique(|x| *x, "unique_id")
+        .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 2); // index 1 and 2 are duplicates
+}
+
+// ── validate_non_empty ────────────────────────────────────────────────────────
+
+#[test]
+fn validate_non_empty_all_non_empty_ok() {
+    let result: Result<Vec<String>, _> = QueryBuilder::from(vec![
+        "hello".to_owned(), "world".to_owned()
+    ])
+    .validate(|_| true, "dummy", "")
+    .validate_non_empty(|s| s.as_str(), "non_empty")
+    .collect_validated();
+    assert!(result.is_ok());
+}
+
+#[test]
+fn validate_non_empty_empty_string_flagged() {
+    let result: Result<Vec<String>, _> = QueryBuilder::from(vec![
+        "ok".to_owned(), "".to_owned(), "fine".to_owned()
+    ])
+    .validate(|_| true, "dummy", "")
+    .validate_non_empty(|s| s.as_str(), "non_empty")
+    .collect_validated();
+    let errors = result.unwrap_err();
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].index, 1);
+    assert_eq!(errors[0].rule, "non_empty");
+}
+
+// ── report ────────────────────────────────────────────────────────────────────
+
+#[test]
+fn report_no_violations_returns_empty_vec() {
+    let report = QueryBuilder::from(vec![1_i32, 2, 3])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .report();
+    assert!(report.is_empty());
+}
+
+#[test]
+fn report_violations_returns_formatted_strings() {
+    let report = QueryBuilder::from(vec![1_i32, -2, 3])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .report();
+    assert_eq!(report.len(), 1);
+    assert!(report[0].contains("positive"));
+    assert!(report[0].contains("index 1"));
+}
+
+#[test]
+fn report_format_matches_display_impl() {
+    // Format: "[rule] message (index N)"
+    let report = QueryBuilder::from(vec![-1_i32])
+        .validate(|x| *x > 0, "positive", "must be positive")
+        .report();
+    assert_eq!(report[0], "[positive] must be positive (index 0)");
+}

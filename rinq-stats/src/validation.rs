@@ -190,6 +190,147 @@ impl<T> ValidationQueryBuilder<T> {
             })
             .collect()
     }
+
+    /// Add a range-check rule: the field extracted by `field_fn` must satisfy `min <= v <= max`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// let result = QueryBuilder::from(vec![5_i32, 150, 30])
+    ///     .validate(|_| true, "dummy", "")
+    ///     .validate_range(|x| *x, 0, 100, "in_range");
+    /// let errors = result.collect_validated().unwrap_err();
+    /// assert_eq!(errors.len(), 1);
+    /// assert_eq!(errors[0].rule, "in_range");
+    /// ```
+    pub fn validate_range<F, N>(mut self, field_fn: F, min: N, max: N, rule: &str) -> Self
+    where
+        F: Fn(&T) -> N + 'static,
+        N: PartialOrd + std::fmt::Display + Copy + 'static,
+    {
+        let rule_str = rule.to_owned();
+        self.rules.push(ValidationRule {
+            rule: rule_str,
+            check: Box::new(move |item| {
+                let v = field_fn(item);
+                if v >= min && v <= max {
+                    None
+                } else {
+                    Some(format!("value {v} is out of range [{min}, {max}]"))
+                }
+            }),
+        });
+        self
+    }
+
+    /// Add a uniqueness rule: the key extracted by `key_fn` must not appear more than once.
+    ///
+    /// Uses an internal `RefCell<HashSet>` so duplicates after the first occurrence are flagged.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// let result = QueryBuilder::from(vec![1_i32, 2, 1, 3])
+    ///     .validate(|_| true, "dummy", "")
+    ///     .validate_unique(|x| *x, "unique_id");
+    /// let errors = result.collect_validated().unwrap_err();
+    /// assert_eq!(errors.len(), 1); // second occurrence of 1
+    /// assert_eq!(errors[0].index, 2);
+    /// ```
+    pub fn validate_unique<F, K>(mut self, key_fn: F, rule: &str) -> Self
+    where
+        F: Fn(&T) -> K + 'static,
+        K: std::hash::Hash + Eq + 'static,
+    {
+        use std::cell::RefCell;
+        use std::collections::HashSet;
+        let seen: RefCell<HashSet<K>> = RefCell::new(HashSet::new());
+        let rule_str = rule.to_owned();
+        self.rules.push(ValidationRule {
+            rule: rule_str,
+            check: Box::new(move |item| {
+                let k = key_fn(item);
+                let mut guard = seen.borrow_mut();
+                if guard.contains(&k) {
+                    Some("duplicate value detected".to_owned())
+                } else {
+                    guard.insert(k);
+                    None
+                }
+            }),
+        });
+        self
+    }
+
+    /// Add a non-empty check for a `&str` field: the field must not be an empty string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// #[derive(Clone, Debug)]
+    /// struct User { name: String }
+    ///
+    /// let result = QueryBuilder::from(vec![
+    ///     User { name: "Alice".to_owned() },
+    ///     User { name: "".to_owned() },
+    /// ])
+    /// .validate(|_| true, "dummy", "")
+    /// .validate_non_empty(|u| u.name.as_str(), "name_required");
+    /// let errors = result.collect_validated().unwrap_err();
+    /// assert_eq!(errors.len(), 1);
+    /// assert_eq!(errors[0].index, 1);
+    /// ```
+    pub fn validate_non_empty<F>(mut self, field_fn: F, rule: &str) -> Self
+    where
+        F: Fn(&T) -> &str + 'static,
+    {
+        let rule_str = rule.to_owned();
+        self.rules.push(ValidationRule {
+            rule: rule_str,
+            check: Box::new(move |item| {
+                if field_fn(item).is_empty() {
+                    Some("field must not be empty".to_owned())
+                } else {
+                    None
+                }
+            }),
+        });
+        self
+    }
+
+    /// Run all validation rules and return a `Vec<String>` of formatted error messages.
+    ///
+    /// Returns an empty `Vec` when there are no violations.
+    /// Each string has the format produced by [`ValidationError`]'s `Display` impl:
+    /// `"[rule] message (index N)"`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rinq::QueryBuilder;
+    /// use rinq_stats::ValidationExt;
+    ///
+    /// let report = QueryBuilder::from(vec![1_i32, -2, 3])
+    ///     .validate(|x| *x > 0, "positive", "must be positive")
+    ///     .report();
+    /// assert_eq!(report.len(), 1);
+    /// assert!(report[0].contains("positive"));
+    /// ```
+    pub fn report(self) -> Vec<String> {
+        match self.collect_validated() {
+            Ok(_) => vec![],
+            Err(errors) => errors.iter().map(|e| e.to_string()).collect(),
+        }
+    }
 }
 
 // ── ValidationExt trait ───────────────────────────────────────────────────────
