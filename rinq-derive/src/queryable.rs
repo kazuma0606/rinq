@@ -9,8 +9,8 @@ use syn::{Data, DeriveInput, Fields, LitStr, Type};
 
 enum FieldKind {
     Bool,
-    Str,        // String or &str
-    Numeric,    // integer / float primitive
+    Str,     // String or &str
+    Numeric, // integer / float primitive
     Other,
 }
 
@@ -26,9 +26,8 @@ fn classify_type(ty: &Type) -> FieldKind {
             match last.as_str() {
                 "bool" => FieldKind::Bool,
                 "String" => FieldKind::Str,
-                "u8" | "u16" | "u32" | "u64" | "u128" | "usize"
-                | "i8" | "i16" | "i32" | "i64" | "i128" | "isize"
-                | "f32" | "f64" => FieldKind::Numeric,
+                "u8" | "u16" | "u32" | "u64" | "u128" | "usize" | "i8" | "i16" | "i32" | "i64"
+                | "i128" | "isize" | "f32" | "f64" => FieldKind::Numeric,
                 _ => FieldKind::Other,
             }
         }
@@ -131,7 +130,7 @@ pub fn derive_queryable(input: DeriveInput) -> TokenStream {
                     struct_name,
                     "Queryable only supports structs with named fields",
                 )
-                .to_compile_error()
+                .to_compile_error();
             }
         },
         _ => {
@@ -139,7 +138,7 @@ pub fn derive_queryable(input: DeriveInput) -> TokenStream {
                 struct_name,
                 "Queryable can only be derived for structs",
             )
-            .to_compile_error()
+            .to_compile_error();
         }
     };
 

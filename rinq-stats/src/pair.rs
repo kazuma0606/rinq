@@ -83,10 +83,7 @@ impl QueryPair {
     /// assert!(QueryPair::try_new(vec![1.0, 2.0], vec![3.0, 4.0]).is_ok());
     /// assert!(QueryPair::try_new(vec![1.0, 2.0, 3.0], vec![4.0]).is_err());
     /// ```
-    pub fn try_new(
-        x: impl Into<Vec<f64>>,
-        y: impl Into<Vec<f64>>,
-    ) -> Result<Self, QueryPairError> {
+    pub fn try_new(x: impl Into<Vec<f64>>, y: impl Into<Vec<f64>>) -> Result<Self, QueryPairError> {
         let x = x.into();
         let y = y.into();
         if x.len() != y.len() {
@@ -114,10 +111,7 @@ impl QueryPair {
     /// );
     /// assert_eq!(pair.len(), 3);
     /// ```
-    pub fn from_builders<S1, S2>(
-        x: QueryBuilder<f64, S1>,
-        y: QueryBuilder<f64, S2>,
-    ) -> Self
+    pub fn from_builders<S1, S2>(x: QueryBuilder<f64, S1>, y: QueryBuilder<f64, S2>) -> Self
     where
         S1: 'static,
         S2: 'static,

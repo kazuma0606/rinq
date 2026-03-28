@@ -5,16 +5,14 @@ use rinq_stats::OutlierExt;
 
 #[test]
 fn zscore_empty_returns_empty() {
-    let result = QueryBuilder::from(Vec::<f64>::new())
-        .remove_outliers_zscore(2.0);
+    let result = QueryBuilder::from(Vec::<f64>::new()).remove_outliers_zscore(2.0);
     assert!(result.is_empty());
 }
 
 #[test]
 fn zscore_no_outliers() {
     let values = vec![1.0_f64, 2.0, 3.0, 4.0, 5.0];
-    let result = QueryBuilder::from(values.clone())
-        .remove_outliers_zscore(3.0);
+    let result = QueryBuilder::from(values.clone()).remove_outliers_zscore(3.0);
     assert_eq!(result, values);
 }
 
@@ -39,8 +37,7 @@ fn zscore_all_identical_no_removal() {
 fn zscore_threshold_zero_removes_non_mean() {
     // threshold=0: only keep values where z-score == 0
     // [1,2,3]: mean=2, std_dev>0; only 2 has z=0
-    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0])
-        .remove_outliers_zscore(0.0);
+    let result = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).remove_outliers_zscore(0.0);
     assert_eq!(result, vec![2.0]);
 }
 
@@ -81,4 +78,72 @@ fn iqr_symmetric_distribution() {
     let values: Vec<f64> = (1..=10).map(|x| x as f64).collect();
     let result = QueryBuilder::from(values).remove_outliers_iqr();
     assert_eq!(result.len(), 10);
+}
+
+// ── Modified Z-Score (MAD) ────────────────────────────────────────────────────
+
+#[test]
+fn modified_zscore_empty_returns_empty() {
+    use rinq_stats::OutlierExt;
+    let result = QueryBuilder::from(Vec::<f64>::new()).remove_outliers_modified_zscore(3.5);
+    assert!(result.is_empty());
+}
+
+#[test]
+fn modified_zscore_all_identical_no_removal() {
+    use rinq_stats::OutlierExt;
+    let result = QueryBuilder::from(vec![5.0_f64, 5.0, 5.0]).remove_outliers_modified_zscore(3.5);
+    assert_eq!(result.len(), 3);
+}
+
+#[test]
+fn modified_zscore_removes_extreme_outlier() {
+    use rinq_stats::OutlierExt;
+    let mut data: Vec<f64> = (1..=9).map(|x| x as f64).collect();
+    data.push(100.0); // extreme outlier
+    let result = QueryBuilder::from(data).remove_outliers_modified_zscore(3.5);
+    assert!(!result.contains(&100.0));
+}
+
+#[test]
+fn modified_zscore_no_outliers_keeps_all() {
+    use rinq_stats::OutlierExt;
+    let data = vec![10.0_f64, 11.0, 12.0, 10.5, 11.5];
+    let n = data.len();
+    let result = QueryBuilder::from(data).remove_outliers_modified_zscore(3.5);
+    assert_eq!(result.len(), n);
+}
+
+// ── IQR Outlier Scores ────────────────────────────────────────────────────────
+
+#[test]
+fn outlier_scores_iqr_empty_returns_empty() {
+    use rinq_stats::OutlierExt;
+    let scores = QueryBuilder::from(Vec::<f64>::new()).outlier_scores_iqr();
+    assert!(scores.is_empty());
+}
+
+#[test]
+fn outlier_scores_iqr_fewer_than_4_returns_zeros() {
+    use rinq_stats::OutlierExt;
+    let scores = QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).outlier_scores_iqr();
+    assert_eq!(scores, vec![0.0, 0.0, 0.0]);
+}
+
+#[test]
+fn outlier_scores_iqr_inliers_score_zero() {
+    use rinq_stats::OutlierExt;
+    let data = vec![10.0_f64, 11.0, 12.0, 10.5, 11.5, 11.0, 10.0];
+    let scores = QueryBuilder::from(data).outlier_scores_iqr();
+    assert!(scores.iter().all(|&s| s == 0.0));
+}
+
+#[test]
+fn outlier_scores_iqr_outlier_has_positive_score() {
+    use rinq_stats::OutlierExt;
+    let mut data: Vec<f64> = (1..=9).map(|x| x as f64).collect();
+    data.push(100.0);
+    let scores = QueryBuilder::from(data).outlier_scores_iqr();
+    // The extreme value (100.0) should have a positive score
+    assert!(*scores.last().unwrap() > 0.0);
 }

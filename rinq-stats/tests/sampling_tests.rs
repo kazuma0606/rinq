@@ -93,16 +93,24 @@ fn sample_n_zero() {
 fn sample_n_elements_from_source() {
     let data: Vec<i32> = (100..200).collect();
     let source: HashSet<i32> = data.iter().cloned().collect();
-    let sample: Vec<i32> = QueryBuilder::from(data).sample_n(&mut rng(13), 30).collect();
+    let sample: Vec<i32> = QueryBuilder::from(data)
+        .sample_n(&mut rng(13), 30)
+        .collect();
     assert!(sample.iter().all(|x| source.contains(x)));
 }
 
 #[test]
 fn sample_n_no_duplicates_when_k_le_n() {
     let data: Vec<i32> = (1..=50).collect();
-    let sample: Vec<i32> = QueryBuilder::from(data).sample_n(&mut rng(14), 10).collect();
+    let sample: Vec<i32> = QueryBuilder::from(data)
+        .sample_n(&mut rng(14), 10)
+        .collect();
     let unique: HashSet<i32> = sample.iter().cloned().collect();
-    assert_eq!(sample.len(), unique.len(), "unexpected duplicates in reservoir sample");
+    assert_eq!(
+        sample.len(),
+        unique.len(),
+        "unexpected duplicates in reservoir sample"
+    );
 }
 
 #[test]
@@ -169,8 +177,7 @@ fn bootstrap_sample_exact_count() {
 #[test]
 fn bootstrap_sample_only_source_elements() {
     let data = vec![10, 20, 30];
-    let sample: Vec<i32> = QueryBuilder::from(data.clone())
-        .bootstrap_sample(&mut rng(31), 100);
+    let sample: Vec<i32> = QueryBuilder::from(data.clone()).bootstrap_sample(&mut rng(31), 100);
     assert!(sample.iter().all(|x| data.contains(x)));
 }
 
@@ -194,8 +201,7 @@ fn bootstrap_sample_empty_source() {
 
 #[test]
 fn bootstrap_sample_zero_n() {
-    let sample: Vec<i32> = QueryBuilder::from(vec![1, 2, 3])
-        .bootstrap_sample(&mut rng(34), 0);
+    let sample: Vec<i32> = QueryBuilder::from(vec![1, 2, 3]).bootstrap_sample(&mut rng(34), 0);
     assert!(sample.is_empty());
 }
 

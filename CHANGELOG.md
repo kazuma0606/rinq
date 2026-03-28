@@ -5,6 +5,68 @@ All notable changes to RINQ (Rust Integrated Query) will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+---
+
+## [v0.1.0] - 2026-03-28
+
+### Added
+
+#### Phase 5A — Type-State Hardening & Diagnostics
+- `#[diagnostic::on_unimplemented]` on `SupportsSelect`, `SupportsThenBy`, `SupportsOrderBy` — friendly compile-time messages for invalid state transitions.
+- `HashEqBound` trait applied to `distinct`, `union`, `intersect`, `except` — clearer `Hash + Eq` requirement errors.
+
+#### Phase 5B — Feature-Flag Integration
+- `parallel` feature: `ParallelQueryBuilder<T, State>` with `par_where`, `par_flat_map`, `par_order_by`, `par_sum`, `par_count`, `par_collect`.
+- `serde` feature: `QueryBuilder::from_json` for `serde_json`-powered deserialization.
+
+#### Phase 5C — Benchmark Suite
+- `rinq/benches/rinq_benchmarks.rs` — Criterion benchmarks for core filter/sort/aggregate operations.
+- `rinq/benches/rinq_v0_2_benchmarks.rs` — Extended Criterion benchmarks.
+- `rinq/benches/rinq_v4_benchmarks.rs` — v4 operator benchmarks (scan, pairwise, zip_with, etc.).
+- `rinq-stats/benches/rinq_stats_benchmarks.rs` — Statistical extension benchmarks (descriptive, sampling, timeseries, outliers, validation).
+
+#### Phase 5D — Core Operator Additions
+- `for_each(f)` — consuming iteration with side effects.
+- `to_sorted_vec(key)` / `to_sorted_vec_desc(key)` — collect into sorted `Vec<T>`.
+- `take_last(n)` / `skip_last(n)` — take or drop the last N elements.
+- `count_by(pred)` — count elements matching a predicate.
+- `sum_by(f)` / `average_by(f)` — aggregate over a projected field.
+- `reduce(f)` — alias for `aggregate_no_seed`.
+- `all_unique()` — returns true if all elements are distinct.
+- `none(pred)` — returns true if no element satisfies the predicate.
+
+#### Phase 5E — Additional Operators
+- `frequencies()` — count occurrences into `HashMap<T, usize>`.
+- `flatten()` — flatten `T: IntoIterator<Item = U>` into `QueryBuilder<U, Filtered>`.
+- `position(pred)` — index of first matching element.
+- `find(pred)` — alias for `first` with `FnMut` predicate.
+- `index_of(value)` — index of first element equal to `value`.
+- `nth(n)` — alias for `element_at`.
+- `batch(n)` — alias for `chunk` available from any state.
+- `exactly_one()` — returns `Ok(T)` if there is exactly one element, `Err` otherwise.
+- `tee()` — clone the sequence into two identical `Vec<T>`.
+
+#### Phase 5F — JOIN Operations
+- `inner_join(right, left_key, right_key)` — equi-join returning matched `(T, U)` pairs.
+- `left_join(right, left_key, right_key)` — left outer join returning `(T, Option<U>)`.
+- `cross_join(right)` — cartesian product returning all `(T, U)` pairs.
+- `rinq-syntax` `query!` macro extended with `join` / `left join` clauses.
+
+#### Phase 5G — rinq-stats Extensions
+- **`NormalizeExt`** (`rinq-stats`): `normalize`, `standardize`, `weighted_average`, `outlier_scores_zscore`, `percentile_filter`, `cumulative_distribution`.
+- **`TimeSeriesExt`** additions: `simple_moving_average`, `weighted_moving_average`, `rate_of_change`, `seasonal_decompose`.
+- **`OutlierExt`** additions: `remove_outliers_modified_zscore` (MAD-based), `outlier_scores_iqr`.
+- **`ValidationQueryBuilder`** additions: `validate_range`, `validate_unique`, `validate_non_empty`, `report`.
+
+#### Phase 5H — Publish Preparation
+- Example programs for all crates: `basic_usage`, `window_analytics`, `functional_ops`, `join_example`, `metrics_example`, `parallel_example`, `statistics`, `timeseries`, `validation`, `derive_example`, `syntax_example`.
+- Zero `cargo doc` warnings across the workspace.
+- All `cargo publish --dry-run` checks pass.
+
+---
+
 ## [v4.0.0] - 2026-03-28
 
 ### Breaking Changes

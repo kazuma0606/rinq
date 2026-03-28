@@ -150,10 +150,7 @@ fn percentile_1_is_max() {
 
 #[test]
 fn percentile_empty() {
-    assert_eq!(
-        QueryBuilder::from(vec![0.0_f64; 0]).percentile(0.5),
-        None
-    );
+    assert_eq!(QueryBuilder::from(vec![0.0_f64; 0]).percentile(0.5), None);
 }
 
 #[test]
@@ -211,10 +208,7 @@ fn kurtosis_peaked_positive() {
 
 #[test]
 fn kurtosis_few_elements() {
-    assert_eq!(
-        QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).kurtosis(),
-        0.0
-    );
+    assert_eq!(QueryBuilder::from(vec![1.0_f64, 2.0, 3.0]).kurtosis(), 0.0);
 }
 
 // ── histogram ─────────────────────────────────────────────────────────────────
@@ -240,7 +234,11 @@ fn histogram_empty_input() {
 
 #[test]
 fn histogram_zero_buckets() {
-    assert!(QueryBuilder::from(vec![1.0_f64, 2.0]).histogram(0).is_empty());
+    assert!(
+        QueryBuilder::from(vec![1.0_f64, 2.0])
+            .histogram(0)
+            .is_empty()
+    );
 }
 
 #[test]

@@ -64,8 +64,8 @@ fn accessor_order_by_name() {
 #[test]
 fn accessor_group_by_active() {
     use std::collections::HashMap;
-    let groups: HashMap<bool, Vec<User>> = QueryBuilder::from(sample_users())
-        .group_by(User::by_active);
+    let groups: HashMap<bool, Vec<User>> =
+        QueryBuilder::from(sample_users()).group_by(User::by_active);
     assert_eq!(groups[&true].len(), 2);
     assert_eq!(groups[&false].len(), 1);
 }
@@ -180,10 +180,12 @@ fn name_starts_with_predicate() {
 fn name_is_empty_predicate() {
     use user_fields::Name;
     let mut users = sample_users();
-    users.push(User { name: String::new(), age: 40, active: true });
-    let result: Vec<_> = QueryBuilder::from(users)
-        .where_(Name::is_empty())
-        .collect();
+    users.push(User {
+        name: String::new(),
+        age: 40,
+        active: true,
+    });
+    let result: Vec<_> = QueryBuilder::from(users).where_(Name::is_empty()).collect();
     assert_eq!(result.len(), 1);
 }
 
@@ -295,7 +297,9 @@ fn queryable_from_tuple_struct_from_impl() {
 #[test]
 fn queryable_from_named_struct_into_query() {
     use rinq::IntoQuery;
-    let repo = UserRepo { users: sample_users() };
+    let repo = UserRepo {
+        users: sample_users(),
+    };
     let result: Vec<_> = repo.into_query().where_(|u| u.active).collect();
     assert_eq!(result.len(), 2);
 }
@@ -328,15 +332,37 @@ fn queryable_from_chained_with_predicates() {
 
 fn sample_users() -> Vec<User> {
     vec![
-        User { name: "Alice".into(),   age: 25, active: true  },
-        User { name: "Bob".into(),     age: 17, active: false },
-        User { name: "Charlie".into(), age: 30, active: true  },
+        User {
+            name: "Alice".into(),
+            age: 25,
+            active: true,
+        },
+        User {
+            name: "Bob".into(),
+            age: 17,
+            active: false,
+        },
+        User {
+            name: "Charlie".into(),
+            age: 30,
+            active: true,
+        },
     ]
 }
 
 fn sample_products() -> Vec<Product> {
     vec![
-        Product { id: 2, internal_code: "X99".into(), price: 1500.0, category: "B".into() },
-        Product { id: 1, internal_code: "A01".into(), price: 800.0,  category: "A".into() },
+        Product {
+            id: 2,
+            internal_code: "X99".into(),
+            price: 1500.0,
+            category: "B".into(),
+        },
+        Product {
+            id: 1,
+            internal_code: "A01".into(),
+            price: 800.0,
+            category: "A".into(),
+        },
     ]
 }

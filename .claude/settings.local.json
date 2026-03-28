@@ -17,7 +17,10 @@
       "Bash(cut -d'<' -f1)",
       "Bash(cut -d'\\(' -f1)",
       "Bash(grep -h \"pub fn \" src/core/builder/*.rs src/metrics/builder.rs)",
-      "Bash(grep -h \"impl.*QueryBuilder<T, Initial>\" src/core/builder/*.rs)"
+      "Bash(grep -h \"impl.*QueryBuilder<T, Initial>\" src/core/builder/*.rs)",
+      "Bash(git mv:*)",
+      "Bash(cargo publish:*)",
+      "Bash(cargo fmt:*)"
     ]
   }
 }

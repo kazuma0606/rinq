@@ -1,21 +1,36 @@
 [package]
 name = "rinq-stats"
-version = "4.0.0"
+version = "0.1.0"
 edition = "2024"
 description = "Statistical extensions for the rinq query engine — descriptive stats, correlation, regression, sampling, and validation."
 license = "MIT"
-repository = "https://github.com/yoshidev/rusted-ca"
+repository = "https://github.com/kazuma0606/rinq"
 keywords = ["statistics", "sampling", "query", "linq", "analytics"]
 categories = ["science", "data-structures"]
-readme = "../README.md"
+readme = "README.md"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-rinq    = { path = ".." }
+rinq    = { path = "../rinq", version = "0.1.0" }
 rand    = { version = "0.8", features = ["small_rng"] }
 log     = "0.4"
 
 [dev-dependencies]
-approx = "0.5"
+approx     = "0.5"
+criterion  = "0.5"
+rand       = { version = "0.8", features = ["small_rng"] }
+
+[[example]]
+name = "statistics"
+
+[[example]]
+name = "timeseries"
+
+[[example]]
+name = "validation"
+
+[[bench]]
+name    = "rinq_stats_benchmarks"
+harness = false

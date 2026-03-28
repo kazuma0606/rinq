@@ -34,6 +34,30 @@ pub trait OutlierExt {
     /// - Empty input: returns empty `Vec`.
     /// - Fewer than 4 elements: returns input unchanged (IQR cannot be reliably computed).
     fn remove_outliers_iqr(self) -> Vec<f64>;
+
+    /// Remove outliers using the **Modified Z-Score** (MAD-based) method.
+    ///
+    /// Modified z-score = `0.6745 * (x - median) / MAD`
+    ///
+    /// where MAD is the Median Absolute Deviation.
+    /// A value is an outlier if `|modified z-score| > threshold` (commonly `3.5`).
+    ///
+    /// More robust than the standard z-score when data are non-normal.
+    ///
+    /// # Edge cases
+    ///
+    /// - Empty input: returns empty `Vec`.
+    /// - `MAD == 0`: no outliers are removed (all values are identical or near-identical).
+    fn remove_outliers_modified_zscore(self, threshold: f64) -> Vec<f64>;
+
+    /// Compute an IQR-based outlier score for every element (without removing any).
+    ///
+    /// Score = `0.0` for values within `[Q1 - 1.5 * IQR, Q3 + 1.5 * IQR]`.
+    /// Score > `0.0` for values outside that range (proportional to distance from the fence).
+    ///
+    /// Returns `vec![0.0; n]` if fewer than 4 elements (IQR undefined).
+    /// Returns an empty `Vec` for an empty input.
+    fn outlier_scores_iqr(self) -> Vec<f64>;
 }
 
 impl<State: 'static> OutlierExt for QueryBuilder<f64, State> {
@@ -73,6 +97,64 @@ impl<State: 'static> OutlierExt for QueryBuilder<f64, State> {
         let lo = q1 - 1.5 * iqr;
         let hi = q3 + 1.5 * iqr;
         values.into_iter().filter(|&x| x >= lo && x <= hi).collect()
+    }
+
+    fn remove_outliers_modified_zscore(self, threshold: f64) -> Vec<f64> {
+        let values: Vec<f64> = self.collect();
+        if values.is_empty() {
+            return Vec::new();
+        }
+        let mut sorted = values.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let med = median_of(&sorted);
+        let deviations: Vec<f64> = values.iter().map(|&x| (x - med).abs()).collect();
+        let mut sorted_dev = deviations.clone();
+        sorted_dev.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mad = median_of(&sorted_dev);
+        if mad == 0.0 {
+            return values;
+        }
+        values
+            .into_iter()
+            .zip(deviations)
+            .filter(|(_, dev)| (0.6745 * dev / mad) <= threshold)
+            .map(|(v, _)| v)
+            .collect()
+    }
+
+    fn outlier_scores_iqr(self) -> Vec<f64> {
+        let values: Vec<f64> = self.collect();
+        if values.is_empty() {
+            return Vec::new();
+        }
+        if values.len() < 4 {
+            return vec![0.0; values.len()];
+        }
+        let mut sorted = values.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n = sorted.len();
+        let (lower_half, upper_half) = if n.is_multiple_of(2) {
+            (&sorted[..n / 2], &sorted[n / 2..])
+        } else {
+            (&sorted[..n / 2], &sorted[n / 2 + 1..])
+        };
+        let q1 = median_of(lower_half);
+        let q3 = median_of(upper_half);
+        let iqr = q3 - q1;
+        let lo = q1 - 1.5 * iqr;
+        let hi = q3 + 1.5 * iqr;
+        values
+            .into_iter()
+            .map(|x| {
+                if x < lo {
+                    lo - x
+                } else if x > hi {
+                    x - hi
+                } else {
+                    0.0
+                }
+            })
+            .collect()
     }
 }
 

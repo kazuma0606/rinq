@@ -27,6 +27,20 @@ pub enum Clause {
     ThenBy { keys: Vec<SortKey> },
     /// `select <projection>`
     Select { tokens: TokenStream },
+    /// `join <binding> in <source> on <left_key> == <right_key>`
+    /// or `left join <binding> in <source> on <left_key> == <right_key>`
+    Join {
+        /// The binding variable for the right-hand sequence.
+        binding: syn::Ident,
+        /// Token stream for the right-hand source expression.
+        source_tokens: TokenStream,
+        /// Key expression evaluated against the **left** (outer) binding.
+        left_key: TokenStream,
+        /// Key expression evaluated against the **right** (`binding`) variable.
+        right_key: TokenStream,
+        /// `true` for a left (outer) join; `false` for an inner join.
+        is_left: bool,
+    },
 }
 
 /// A single sort key with an optional `desc` modifier.

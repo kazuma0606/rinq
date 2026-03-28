@@ -1,17 +1,19 @@
 // rinq-stats/src/lib.rs
 
-pub mod statistics;
-pub mod types;
+pub mod outliers;
 pub mod pair;
 pub mod sampling;
-pub mod validation;
+pub mod statistics;
 pub mod timeseries;
-pub mod outliers;
+pub mod transform;
+pub mod types;
+pub mod validation;
 
-pub use statistics::StatisticsExt;
-pub use types::HistogramBucket;
+pub use outliers::OutlierExt;
 pub use pair::{QueryPair, QueryPairError};
 pub use sampling::SamplingExt;
-pub use validation::{ValidationExt, ValidationError, ValidationQueryBuilder};
-pub use timeseries::{TimeSeriesExt, BollingerPoint};
-pub use outliers::OutlierExt;
+pub use statistics::StatisticsExt;
+pub use timeseries::{BollingerPoint, SeasonalDecomposition, TimeSeriesExt};
+pub use transform::NormalizeExt;
+pub use types::HistogramBucket;
+pub use validation::{ValidationError, ValidationExt, ValidationQueryBuilder};

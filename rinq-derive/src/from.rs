@@ -55,7 +55,7 @@ pub fn derive_queryable_from(input: DeriveInput) -> TokenStream {
                             field_ty,
                             "QueryableFrom: the single field must be Vec<T>",
                         )
-                        .to_compile_error()
+                        .to_compile_error();
                     }
                 }
             }
@@ -81,7 +81,7 @@ pub fn derive_queryable_from(input: DeriveInput) -> TokenStream {
                             &field.ty,
                             "QueryableFrom: the single named field must be Vec<T>",
                         )
-                        .to_compile_error()
+                        .to_compile_error();
                     }
                 }
             }
@@ -90,7 +90,7 @@ pub fn derive_queryable_from(input: DeriveInput) -> TokenStream {
                     struct_name,
                     "QueryableFrom cannot be derived for unit structs",
                 )
-                .to_compile_error()
+                .to_compile_error();
             }
         },
         _ => {
@@ -98,7 +98,7 @@ pub fn derive_queryable_from(input: DeriveInput) -> TokenStream {
                 struct_name,
                 "QueryableFrom can only be derived for structs",
             )
-            .to_compile_error()
+            .to_compile_error();
         }
     };
 

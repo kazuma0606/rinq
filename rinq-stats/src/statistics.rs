@@ -192,7 +192,11 @@ where
     State: 'static,
 {
     fn variance(self) -> f64 {
-        let values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         population_variance(&values)
     }
 
@@ -201,7 +205,11 @@ where
     }
 
     fn median(self) -> Option<f64> {
-        let mut values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let mut values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         if values.is_empty() {
             return None;
         }
@@ -233,7 +241,11 @@ where
     }
 
     fn percentile(self, p: f64) -> Option<f64> {
-        let mut values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let mut values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         if values.is_empty() {
             return None;
         }
@@ -248,7 +260,11 @@ where
     }
 
     fn skewness(self) -> f64 {
-        let values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         let n = values.len();
         if n < 3 {
             return 0.0;
@@ -264,7 +280,11 @@ where
     }
 
     fn kurtosis(self) -> f64 {
-        let values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         let n = values.len();
         if n < 4 {
             return 0.0;
@@ -283,7 +303,11 @@ where
         if buckets == 0 {
             return vec![];
         }
-        let values: Vec<f64> = self.collect::<Vec<T>>().into_iter().map(|x| x.into()).collect();
+        let values: Vec<f64> = self
+            .collect::<Vec<T>>()
+            .into_iter()
+            .map(|x| x.into())
+            .collect();
         if values.is_empty() {
             return vec![];
         }
